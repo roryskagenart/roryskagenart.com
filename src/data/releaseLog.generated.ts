@@ -21,6 +21,25 @@ export type { ReleaseLog };
 export const RELEASE_LOG: ReleaseLog = {
   "changelog": [
     {
+      "version": "3.2.1",
+      "date": "2026-10-06",
+      "summary": null,
+      "sections": [
+        {
+          "heading": "Changed",
+          "category": "Changed",
+          "entries": [
+            {
+              "text": "Navbar: added a Shop link to the Fourthwall storefront (https://shop.roryskagenart.com) as a real anchor opening in a new tab — the hash router has no shop route, so a router button would silently render nothing. \"Home\" and \"Dashboard\" are now icon-only buttons (aria-label and title preserved) and \"Contact Me\" is now \"Contact\", to buy horizontal room. Mobile keeps icon + label. Pinned by src/test/navbarLinks.test.tsx (6 tests).",
+              "details": [],
+              "raw": "**Navbar:** added a **Shop** link to the Fourthwall storefront (`https://shop.roryskagenart.com`)\n  as a real anchor opening in a new tab — the hash router has no `shop` route, so a router button\n  would silently render nothing. **\"Home\" and \"Dashboard\" are now icon-only buttons** (`aria-label`\n  and `title` preserved) and **\"Contact Me\" is now \"Contact\"**, to buy horizontal room. Mobile\n  keeps icon + label. Pinned by `src/test/navbarLinks.test.tsx` (6 tests)."
+            }
+          ]
+        }
+      ],
+      "unreleased": false
+    },
+    {
       "version": "3.2.0",
       "date": "2026-09-16",
       "summary": "\"Group\" — the board becomes a real tool rather than a list. The second release of the studio feedback & planning program. Releases become first-class, the board can be read grouped by them, a single item can be opened and triaged, the nav shows what is waiting, and new public submissions reach the studio in one batched email instead of one message each. Two migrations (both additive and idempotent), applied 2026-09-16.",
@@ -2666,7 +2685,7 @@ export const RELEASE_LOG: ReleaseLog = {
     }
   ],
   "diagnostics": {
-    "releases": 22,
+    "releases": 23,
     "deploymentRows": 83,
     "warnings": []
   }
