@@ -1854,6 +1854,36 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "deployments": [
     {
+      "date": "2026-10-06",
+      "version": "v3.2.1",
+      "url": "https://roryskagenart-mwu5lyrnx-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "bbde738: PR #1 — navbar compaction (ui/navbar-shop-link): adds a Shop link to the Fourthwall storefront as a real <a target=\"_blank\" rel=\"noopener noreferrer\"> (the hash router has no shop route — a router button would silently render nothing), Home and Dashboard become icon-only buttons (aria-label/title preserved), \"Contact Me\" → \"Contact\". UI-only: no schema, no migration, no API change. New src/test/navbarLinks.test.tsx (6 tests). Annotated tag v3.2.1 points at this commit (Current Active). ⚠️ Note: bundleSafety.test.ts fails pre-existing (4 tests) on both this tree and its parent — reproduced via git stash; unrelated to the release",
+      "flagged": true
+    },
+    {
+      "date": "2026-10-06",
+      "version": "v3.2.1-preview",
+      "url": "https://roryskagenart-lulmqawom-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Preview",
+      "commits": "bede322: ui/navbar-shop-link preview (PR #1)",
+      "flagged": false
+    },
+    {
+      "date": "2026-09-16",
+      "version": "post-v3.2.0",
+      "url": null,
+      "status": null,
+      "buildTime": null,
+      "target": null,
+      "commits": null,
+      "flagged": false
+    },
+    {
       "date": "2026-09-16",
       "version": "post-v3.1.0",
       "url": "https://roryskagen-rago55952-ventureio.vercel.app",
@@ -1880,7 +1910,7 @@ export const RELEASE_LOG: ReleaseLog = {
       "status": "● Ready",
       "buildTime": "n/a",
       "target": "Production",
-      "commits": "0ab5c5b0: PR #36 — the studio feedback & planning board, Capture (release/v3.1.0). Adds public.plan_items (15 columns, 4 CHECK constraints, 3 indexes, RLS with one is_admin_or_editor() policy and no public policy — the table holds public submitters' email addresses) and server/routes/plan.ts: six endpoints behind two doors — POST /api/plan/feedback is public and server-forced to kind='suggestion' / source='public' / status='new', while POST /api/plan/items sits behind requireAuth and takes author_id from the session. A viewer can file but cannot read the board: GET/PATCH/DELETE /api/plan/items* require editor (open question Q-E). Also: admin Planning + Changelog views (the latter generated from CHANGELOG.md + DEPLOYMENT_LOG.md), a footer feedback modal, honeypot + rate-limit guards shared with the inquiry route, and plan_items added to scripts/lib/restorePlan.ts in the same change. The migration was applied after the merge — public.plan_items exists, schema_migrations 15 → 16. ⚠️ Between the merge and the migration the off-site backup was broken: server/lib/catalogDump.ts shares RESTORE_ORDER with scripts/backup-catalog.ts, so both threw relation \"public.plan_items\" does not exist; a partial dump (9 of 10 tables, no manifest) was written at 00:59:45Z and is quarantined under data/backups/ as ...-FAILED-no-manifest. Post-migration backup: 10 tables, 862 rows, 16 recorded migrations, format v2, sha256 verified. Annotated tag v3.1.0 points at this commit (Current Active)",
+      "commits": "0ab5c5b0: PR #36 — the studio feedback & planning board, Capture (release/v3.1.0). Adds public.plan_items (15 columns, 4 CHECK constraints, 3 indexes, RLS with one is_admin_or_editor() policy and no public policy — the table holds public submitters' email addresses) and server/routes/plan.ts: six endpoints behind two doors — POST /api/plan/feedback is public and server-forced to kind='suggestion' / source='public' / status='new', while POST /api/plan/items sits behind requireAuth and takes author_id from the session. A viewer can file but cannot read the board: GET/PATCH/DELETE /api/plan/items* require editor (open question Q-E). Also: admin Planning + Changelog views (the latter generated from CHANGELOG.md + DEPLOYMENT_LOG.md), a footer feedback modal, honeypot + rate-limit guards shared with the inquiry route, and plan_items added to scripts/lib/restorePlan.ts in the same change. The migration was applied after the merge — public.plan_items exists, schema_migrations 15 → 16. ⚠️ Between the merge and the migration the off-site backup was broken: server/lib/catalogDump.ts shares RESTORE_ORDER with scripts/backup-catalog.ts, so both threw relation \"public.plan_items\" does not exist; a partial dump (9 of 10 tables, no manifest) was written at 00:59:45Z and is quarantined under data/backups/ as ...-FAILED-no-manifest. Post-migration backup: 10 tables, 862 rows, 16 recorded migrations, format v2, sha256 verified. Annotated tag v3.1.0 points at this commit",
       "flagged": true
     },
     {
@@ -2686,7 +2716,7 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "diagnostics": {
     "releases": 23,
-    "deploymentRows": 83,
+    "deploymentRows": 86,
     "warnings": []
   }
 };
