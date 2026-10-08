@@ -1,18 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  ArrowRight, 
-  Sparkles, 
-  Send, 
-  Maximize2, 
+import React, { useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Award,
+  BadgeCheck,
+  Check,
+  ChevronDown,
   Mail,
-  Search,
-  Eye,
-  X,
-  Compass,
-  ChevronRight,
   MapPin,
-  Camera,
-  Award
+  Maximize2,
+  Palette,
+  Ruler,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ArtworkRecord } from '../types';
@@ -20,7 +21,8 @@ import { useAuth } from '../context/AuthContext';
 import { InquiryModal } from './InquiryModal';
 import { resolveAssetUrl } from '../data/assetResolver';
 import { getArtworkSvg } from '../data/artAssets';
-import { HeroGallerySlider } from './HeroGallerySlider';
+import { HeroGallerySlider, heroExcerpt } from './HeroGallerySlider';
+import { LANDMARK_TRIPTYCH, STUDIO_TIMELINE, resolveImageUrl } from '../data/homeContent';
 
 interface HomeLandingViewProps {
   onNavigate: (route: string, param?: string) => void;
@@ -28,381 +30,89 @@ interface HomeLandingViewProps {
   totalWorks: number;
 }
 
-// 2010 Archive Item Definition
-interface ArchiveFeatureDef {
-  id: string;
-  slug: string;
-  title: string;
-  year: string;
-  medium: string;
-  dimensions: string;
-  price: string;
-  status: 'Available' | 'Sold' | 'Archived' | 'Private Collection' | 'Public Installation';
-  imageKey: string;
-  narrative: string;
-  category: 'monsters' | 'ads' | 'cocktail' | 'vintage' | 'foreign' | 'banners' | 'murals';
-}
+/**
+ * Statuses that mean "you can buy this". Everything else is shown as context, never as a
+ * purchasable card — a gallery that prices a Sold work the same as an Available one teaches the
+ * collector not to trust its labels.
+ */
+const FOR_SALE: ReadonlySet<string> = new Set(['Available', 'Limited Edition']);
 
-// Canonical items from the 2010 original archive shown in the user's reference image
-const CLASSIC_MAIN_EXHIBITION: ArchiveFeatureDef[] = [
-  {
-    id: 'kirunam',
-    slug: 'kirunan',
-    title: 'Kirunam',
-    year: '2010',
-    medium: 'Enamel on steel panel',
-    dimensions: "4' x 5'",
-    price: '$4,500.00',
-    status: 'Available',
-    imageKey: 'kirunan.jpg',
-    narrative: "Leaving the nearby ocean forever, Kirunam slithers its way down the city streets. Unable to recognize this dimension, Kirunam, melancholy and alone, prays in its low guttural frequency toward the fading twilight horizon.",
-    category: 'monsters'
-  },
-  {
-    id: 'terrordon',
-    slug: 'terrordon',
-    title: 'Terrordon',
-    year: '2010',
-    medium: 'Enamel on panel',
-    dimensions: "3.5' x 5'",
-    price: '$4,000.00',
-    status: 'Available',
-    imageKey: 'terrordon.jpg',
-    narrative: "Terrordon surveys the abandoned streets it will soon demolish. 3.5' x 5' enamel on panel – an ominous monument to mid-century atomic paranoia and creature feature cinema.",
-    category: 'monsters'
-  },
-  {
-    id: 'jigoku',
-    slug: 'jigoku',
-    title: 'Jigoku',
-    year: '2010',
-    medium: 'Enamel on steel panel',
-    dimensions: "4' x 5'",
-    price: 'Archived',
-    status: 'Archived',
-    imageKey: 'jigoku.jpg',
-    narrative: "\"Goodbye mankind. A demon incarnate. Literal hell on Earth. We are doomed.\" Last message reported from Los Angeles January 16, 1962.",
-    category: 'monsters'
-  },
-  {
-    id: 'utaho',
-    slug: 'utaho',
-    title: 'Utaho',
-    year: '2010',
-    medium: 'Enamel on panel',
-    dimensions: "4' x 5'",
-    price: '$4,200.00',
-    status: 'Available',
-    imageKey: 'utaho.jpg',
-    narrative: "We can thank science for many modern miracles; science has created the atom bomb to protect us from Communism, Fluoridated water to keep our children's teeth strong, and telecommunications for the great forward march of civilization.",
-    category: 'monsters'
-  }
-];
+/** Sort key that floats genuinely purchasable works to the top without reordering the rest. */
+const saleRank = (a: ArtworkRecord): number => (FOR_SALE.has(a.status) ? 0 : 1);
 
-// Sidebar 2010 Spotlight works
-const SIDEBAR_SPOTLIGHTS: ArchiveFeatureDef[] = [
-  {
-    id: 'rendezvous-in-chinatown',
-    slug: 'rendezvous-in-chinatown',
-    title: 'Rendezvous in Chinatown',
-    year: '2010',
-    medium: 'Acrylic on framed panel',
-    dimensions: "4' x 3'",
-    price: '$2,000.00',
-    status: 'Available',
-    imageKey: 'The-watering-hole-copy.jpg',
-    narrative: "A noir-drenched encounter under neon signs and paper lanterns. 4' x 3' acrylic on custom framed panel.",
-    category: 'cocktail'
-  },
-  {
-    id: 'the-cats-of-the-colloseum',
-    slug: 'the-cats-of-the-colloseum',
-    title: 'The Cats of the Colloseum',
-    year: '2010',
-    medium: 'Acrylic on framed panel',
-    dimensions: "4' x 3'",
-    price: '$2,000.00',
-    status: 'Available',
-    imageKey: 'the-cats-of-the-colloseum-copy3.jpg',
-    narrative: "Feline sovereigns claim the historic ruins of Rome. 4' x 3' acrylic on framed wooden panel with vintage patina.",
-    category: 'vintage'
-  },
-  {
-    id: 'the-production',
-    slug: 'the-production',
-    title: 'The Production',
-    year: '2010',
-    medium: 'Acrylic on framed panel',
-    dimensions: "4' x 3'",
-    price: '$2,000.00',
-    status: 'Available',
-    imageKey: 'the-production-copy.jpg',
-    narrative: "Behind the silver screen of 1950s Hollywood movie sets. 4' x 3' Acrylic on framed panel.",
-    category: 'vintage'
-  }
-];
+const isPublic = (a: ArtworkRecord): boolean =>
+  !a.trashed && !a.draft && a.enabled !== false && a.status !== 'Hidden' && a.status !== 'Disabled';
 
-// Mid-section dual category highlights
-const DUAL_SHOWCASE = {
-  vintageAds: {
-    id: 'drebbles',
-    slug: 'drebbles',
-    title: 'Drebbles',
-    sectionTitle: 'VINTAGE FOOD ADVERTISEMENTS',
-    year: '2008',
-    medium: 'Sign enamel & clear coat on back-framed wooden panel',
-    dimensions: "5' x 3.5'",
-    price: '$3,200.00',
-    status: 'Available' as const,
-    imageKey: 'drebbles-copy.jpg',
-    narrative: "\"Strong pine medicine. It's not candy. O.K. ... it is candy.\" This 5' x 3.5' image is painted on a back framed wooden panel in sign enamel and clear coat, evoking vintage mid-century apothecary advertising."
-  },
-  banners: {
-    id: 'dinosaur-land',
-    slug: 'dinosaur-land',
-    title: 'Dinosaur Land',
-    sectionTitle: 'BANNER PAINTINGS',
-    year: '2009',
-    medium: 'Acrylic on canvas banner with leather corners & brass grommets',
-    dimensions: "4' x 6'",
-    price: 'Studio Collection',
-    status: 'Archived' as const,
-    imageKey: 'dinolandcropped-copy1.jpg',
-    narrative: "The world of 3rd grade Dinosaurs. 4' x 6' acrylic on heavy duty banner with reinforced leather corners and industrial hanging rings. Painted in the tradition of mid-century carnival sideshow banners."
-  }
-};
-
-// 5-Column Collections from the 2010 site layout
-interface CuratedColumnDef {
-  columnTitle: string;
-  featured: ArchiveFeatureDef;
-  links: Array<{ title: string; slug: string; price?: string }>;
-}
-
-const CURATED_FIVE_COLUMNS: CuratedColumnDef[] = [
-  {
-    columnTitle: 'Commissions & Misc',
-    featured: {
-      id: 'austin-camouflage',
-      slug: 'austin-camouflage',
-      title: 'Austin Camouflage',
-      year: '2008',
-      medium: 'Enamel on Canvas',
-      dimensions: '22" x 5\'',
-      price: '$1,500.00',
-      status: 'Available',
-      imageKey: 'austin-Recovered-copy.jpg',
-      narrative: 'Mid-century panoramic abstraction celebrating Central Texas iconography and cosmic roadside aesthetics.',
-      category: 'murals'
-    },
-    links: [
-      { title: 'Greetings from Austin', slug: 'greetings-from-austin', price: 'Public Landmark' },
-      { title: 'Austin Postcard', slug: 'austin-postcard', price: '$950.00' },
-      { title: '78704 Heritage', slug: '78704', price: '$1,200.00' },
-      { title: 'The Balloon Cats', slug: 'the-balloon-cats-2', price: '$1,800.00' },
-      { title: 'Marcia Ball Tour Art', slug: 'marcia-ball', price: '$2,200.00' }
-    ]
-  },
-  {
-    columnTitle: 'The Cocktail Hours',
-    featured: {
-      id: 'the-blue-elephant-lounge',
-      slug: 'the-blue-elephant-lounge',
-      title: 'The Blue Elephant Lounge',
-      year: '2009',
-      medium: 'Acrylic on wood with ebonized red oak frame',
-      dimensions: '5\' x 22.5"',
-      price: '$2,400.00',
-      status: 'Available',
-      imageKey: 'The-blue-elephant-lounge-.jpg',
-      narrative: '5\' long by 22.5" tall acrylic painting on wood with a custom ebonized red oak frame. A classic supper club sanctuary.',
-      category: 'cocktail'
-    },
-    links: [
-      { title: 'The Red Mood', slug: 'the-red-mood', price: '$1,600.00' },
-      { title: 'The Blue Hour', slug: 'the-blue-hour', price: '$1,800.00' },
-      { title: 'Cave Dance', slug: 'cave-dance', price: '$2,100.00' },
-      { title: 'Stewed Gorilla', slug: 'stewed-gorilla-copy', price: '$1,400.00' },
-      { title: 'The 18,000th Hole', slug: 'the-18000th-whole', price: '$1,900.00' }
-    ]
-  },
-  {
-    columnTitle: 'Vintage Appeal',
-    featured: {
-      id: 'raintree-county',
-      slug: 'raintree-county',
-      title: 'Raintree County',
-      year: '2007',
-      medium: 'Enamel & Acrylic on illustration board',
-      dimensions: '6.5" x 8"',
-      price: '$850.00',
-      status: 'Available',
-      imageKey: 'raintree-wallpaper-6.5-x-8.jpg',
-      narrative: 'Based on the memory of a souvenir ashtray from Saratoga once seen in the trailer of a couple from New York.',
-      category: 'vintage'
-    },
-    links: [
-      { title: 'Random House', slug: 'random-house', price: '$1,100.00' },
-      { title: 'The Butter and Egg Man', slug: 'the-butter-and-egg-man', price: '$950.00' },
-      { title: 'Tuesday Charmer', slug: 'tuesday-charmer', price: '$1,250.00' },
-      { title: 'Southern Belle', slug: 'southern-belle', price: '$1,400.00' },
-      { title: 'Cornflower', slug: 'cornflower', price: '$900.00' }
-    ]
-  },
-  {
-    columnTitle: 'Ad Lands',
-    featured: {
-      id: 'tipsy-island',
-      slug: 'tipsy-island',
-      title: 'Tipsy Island',
-      year: '2008',
-      medium: 'Acrylic on illustration board with exotic frame',
-      dimensions: '13" x 24"',
-      price: '$1,800.00',
-      status: 'Available',
-      imageKey: 'tipsy-island-copy-2.jpg',
-      narrative: '"Tiki luau fantasy." 13" by 24" acrylic on illustration board beautifully framed and matted under glass, featuring an exotic jaguar motif.',
-      category: 'ads'
-    },
-    links: [
-      { title: 'The Hell That Is', slug: 'the-hell-that-is-monkey-island', price: '$2,000.00' },
-      { title: 'Monkey Island', slug: 'monkey-sunset', price: '$1,500.00' },
-      { title: 'Square Eggs', slug: 'square-eggs', price: '$1,100.00' },
-      { title: 'The Great All Stars', slug: 'the-great-all-stars', price: '$2,500.00' },
-      { title: 'Beaver Holiday', slug: 'beaver-holiday', price: '$1,300.00' }
-    ]
-  },
-  {
-    columnTitle: 'The Foreign Group',
-    featured: {
-      id: 'wisdom-coffee',
-      slug: 'wisdom-coffee',
-      title: 'Wisdom Coffee',
-      year: '2009',
-      medium: 'Acrylic on illustration board',
-      dimensions: '22.5" x 13.5"',
-      price: '$1,750.00',
-      status: 'Available',
-      imageKey: 'wisdom-coffee-copy.jpg',
-      narrative: '"Voltaire drank 50 cups of coffee a day." 22.5" by 13.5" acrylic painting on heavy illustration board. International pop commercial iconography.',
-      category: 'foreign'
-    },
-    links: [
-      { title: 'Mogul Cigarettes', slug: 'mogul-cigarettes', price: '$1,650.00' },
-      { title: 'Silent Flute', slug: 'silent-flute', price: '$1,200.00' },
-      { title: 'Adventures in Illustration', slug: 'adventures-in-illustration', price: '$1,900.00' },
-      { title: 'Moo Goo Gai Pan', slug: 'moo-goo-gai-pan-copy', price: '$1,450.00' },
-      { title: 'Nomaka', slug: 'nomaka', price: '$1,350.00' }
-    ]
-  }
-];
-
-// ─────────────────────────────────────────────────────────────
-// LANDMARK PHOTO TRIPTYCH — the "Greetings from Austin" mural
-// in three eras: today, roadside nostalgia, and painting day 1998.
-// ─────────────────────────────────────────────────────────────
-const LANDMARK_TRIPTYCH = [
-  {
-    src: '/images/greetings-from-austin-mural.jpg',
-    alt: 'Visitor posing in front of the Greetings from Austin mural at Roadhouse Relics',
-    era: 'The Landmark Today',
-    caption: 'South 1st & Annie Street — photographed by millions of travelers since 1998.',
-    tag: 'Espy 2024'
-  },
-  {
-    src: '/images/greetings-mural-turquoise-truck.jpg',
-    alt: 'Vintage turquoise Chevrolet Apache pickup parked in front of the Greetings from Austin mural',
-    era: 'Roadside Americana',
-    caption: 'Roadhouse Relics gallery with a 1957 Apache — vintage neon signs & decor for homes.',
-    tag: 'The Gallery Years'
-  },
-  {
-    src: '/images/greetings-mural-painting-1998.jpg',
-    alt: 'Rory Skagen painting the Greetings from Austin mural in 1998 with ladder and paint supplies',
-    era: 'Painting Day, 1998',
-    caption: 'Skagen at the wall — hand-lettering the large-letter postcard that became an Austin icon.',
-    tag: 'Original Installation'
-  }
-];
-
-// Helper to resolve real artwork image URLs — stage v3.2 dual-read chain
-// (Supabase registry first, frozen Cloudinary map second, SVG fallback last)
-const resolveImageUrl = (key: string, slug?: string): string => {
-  const url = resolveAssetUrl(key, slug, 'hero');
-  if (url) return url;
-  // Fallback to high-res dynamic SVG from artAssets
-  return getArtworkSvg(slug || key.replace(/\.[^/.]+$/, ''));
-};
-
+/**
+ * The gallery-first home page.
+ *
+ * WHY THIS REPLACED THE OLD ONE
+ * The previous layout was an *archive homage*: a 2-column feed of four 2010 works, a "2010 Archive
+ * Spotlight" sidebar, a 5-column "Canonical 2010 Collections" grid, and a leftover filter/search bar
+ * that only ever filtered those four hard-coded items. It answered "what did the studio do in 2010"
+ * when the visitor's actual question is "what can I buy, and should I trust this person".
+ *
+ * This page answers that instead, in the order a collector asks it:
+ *
+ *   1. Hero            — what this is, in one line, with real numbers.
+ *   2. Acquisition rail — what is available RIGHT NOW, priced, one click to inquire.
+ *   3. The proof        — why the work is authentic and where it hangs (certificate, landmark).
+ *   4. The story        — four decades, told as credentials rather than prose.
+ *   5. The artist       — who he is, and what a commission looks like.
+ *   6. Close            — the whole catalogue, and a commission enquiry.
+ *
+ * Two rules hold everywhere below:
+ *  - A price is only shown as a price. Sold/archived works are labelled as such.
+ *  - Every "buy" path ends in a real human contact (the inquiry modal), because that is how the
+ *    studio actually sells — there is no checkout in this app.
+ */
 export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
   onNavigate,
   featuredArtworks,
   totalWorks,
 }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [inquiryModalOpen, setInquiryModalOpen] = useState(false);
   const [selectedInquiryArtwork, setSelectedInquiryArtwork] = useState<ArtworkRecord | null>(null);
+  const [lightboxArtwork, setLightboxArtwork] = useState<ArtworkRecord | null>(null);
 
-  // Lightbox modal state for high-res artwork inspection
-  const [lightboxArtwork, setLightboxArtwork] = useState<ArchiveFeatureDef | ArtworkRecord | null>(null);
+  /**
+   * The acquisition rail. Real catalogue records only — no hard-coded feature list — so the page
+   * cannot drift from the studio's actual inventory, and works that sell simply stop appearing.
+   */
+  const availableWorks = useMemo(
+    () =>
+      featuredArtworks
+        .filter(isPublic)
+        .slice()
+        .sort((a, b) => saleRank(a) - saleRank(b))
+        .slice(0, 6),
+    [featuredArtworks],
+  );
 
-  // Category filter state for the exhibition
-  const [activeCategory, setActiveCategory] = useState<'all' | 'monsters' | 'ads' | 'cocktail' | 'vintage' | 'foreign' | 'murals'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const availableCount = featuredArtworks.filter((a) => isPublic(a) && FOR_SALE.has(a.status)).length;
 
-  // Handle inquiry dispatch
-  const handleArchiveInquiry = (item: ArchiveFeatureDef) => {
-    // Construct artwork record shape for modal
-    const artRec: ArtworkRecord = {
-      slug: item.slug,
-      title: item.title,
-      year: item.year,
-      medium: item.medium,
-      dimensions: item.dimensions,
-      price: item.price,
-      status: item.status,
-      featured_image: item.imageKey,
-      gallery_series: item.category,
-      narrative: item.narrative,
-      filePath: `posts/${item.slug}.md`
-    };
-    setSelectedInquiryArtwork(artRec);
+  const openInquiry = (artwork: ArtworkRecord | null) => {
+    setSelectedInquiryArtwork(artwork);
+    setLightboxArtwork(null);
     setInquiryModalOpen(true);
   };
 
-  // Filtered exhibition items
-  const filteredMainExhibition = useMemo(() => {
-    return CLASSIC_MAIN_EXHIBITION.filter((item) => {
-      const matchCategory = activeCategory === 'all' || item.category === activeCategory;
-      const matchSearch = searchQuery.trim() === '' || 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        item.narrative.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.medium.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-  }, [activeCategory, searchQuery]);
-
   return (
-    <div id="rory-skagen-home-archive" className="pb-20 font-sans">
-      
+    <div id="rory-skagen-home" className="pb-20 font-sans">
       {/* ─────────────────────────────────────────────────────────────
-          1. HERO — ONE FULL-BLEED CANVAS. The artwork slider IS the
-          background layer (cover-crop, ambient); the masthead overlays
-          it as the top section. Sections below return to the inset
-          content frame, which owns the vertical rhythm.
+          1. HERO — one full-bleed canvas; the slider IS the background.
       ────────────────────────────────────────────────────────────────*/}
       <section
         className="relative w-full min-h-[470px] sm:min-h-[540px] md:min-h-[600px] overflow-hidden bg-surface-deep"
-        aria-label="The Studio of Rory Skagen — Austin, Texas"
+        aria-label="The studio of Rory Skagen — Austin, Texas"
       >
-        {/* Background layer: single artwork slider, no meta card */}
         <HeroGallerySlider artworks={featuredArtworks} />
 
-        {/* Overlay: the masthead itself */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 md:pt-24 pb-12 sm:pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Statement column */}
-            <div className="lg:col-span-8 space-y-4">
+            <div className="lg:col-span-8 space-y-5">
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -410,7 +120,7 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
                 className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.28em] text-white/75"
               >
                 <span className="h-px w-8 bg-amber-400" />
-                <span>The Studio of Rory Skagen — Austin, Texas</span>
+                <span>The studio of Rory Skagen — Austin, Texas</span>
               </motion.div>
 
               <motion.h1
@@ -419,20 +129,45 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="font-serif font-black uppercase tracking-tight leading-[0.95] text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
               >
-                Pop surrealism from the roadside imagination
+                Original paintings,
+                <br />
+                sold from the studio
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.25 }}
-                className="max-w-2xl text-sm sm:text-base leading-relaxed text-white/80"
+                className="max-w-2xl text-sm sm:text-base leading-relaxed text-white/85"
               >
-                Four decades of atomic Americana, Kaiju giants, neon supper clubs and landmark Texas murals — original enamels and paintings, available to collectors and curators.
+                Four decades of atomic Americana, Kaiju giants, neon supper clubs and landmark Texas
+                murals — every enamel and canvas painted by hand, signed, and sold directly by the
+                artist who made it.
               </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+                className="flex flex-wrap items-center gap-3 pt-1"
+              >
+                <a
+                  href="#available-works"
+                  className="px-6 py-3 bg-amber-500 text-black font-mono font-bold uppercase tracking-[0.18em] text-xs hover:opacity-90 transition-opacity flex items-center gap-2"
+                >
+                  <span>Browse works for sale</span>
+                  <ChevronDown className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={() => openInquiry(null)}
+                  className="px-6 py-3 border border-white/35 text-white font-mono font-bold uppercase tracking-[0.18em] text-xs hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  Commission a painting
+                </button>
+              </motion.div>
             </div>
 
-            {/* Meta column */}
+            {/* Trust meta column — the numbers that make the claim checkable */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -440,8 +175,9 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
               className="lg:col-span-4 space-y-3 font-mono text-[11px] border-l border-white/25 pl-5 lg:pl-6"
             >
               {[
-                { label: 'Works Cataloged', value: String(totalWorks) },
-                { label: 'Studio Est.', value: '1985' },
+                { label: 'Works catalogued', value: String(totalWorks) },
+                { label: 'Available now', value: String(availableCount) },
+                { label: 'Studio est.', value: '1985' },
                 { label: 'Landmark', value: 'Greetings from Austin' },
               ].map((row) => (
                 <div key={row.label} className="flex items-baseline justify-between gap-4">
@@ -454,695 +190,358 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
         </div>
       </section>
 
-      {/* ── Inset content frame — every section below the hero lives here,
-          and this wrapper owns the vertical rhythm between sections ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-12 sm:space-y-16">
-
-        {/* Quick Filter / Search Bar */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Category Tabs */}
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 font-mono text-[11px]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-16 sm:space-y-20 pt-14 sm:pt-16">
+        {/* ─────────────────────────────────────────────────────────────
+            2. THE ACQUISITION RAIL — what is for sale, right now.
+        ────────────────────────────────────────────────────────────────*/}
+        <section id="available-works" className="space-y-6 scroll-mt-24">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-line-strong pb-3">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Available from the studio
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif tracking-tight">
+                Works for sale
+              </h2>
+            </div>
             <button
-              onClick={() => setActiveCategory('all')}
-              className={`px-3 py-1.5 rounded-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                activeCategory === 'all'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-deep text-foreground/75 hover:bg-muted'
-              }`}
+              onClick={() => onNavigate('gallery')}
+              className="text-xs font-mono font-bold uppercase tracking-wider text-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
             >
-              2010 Landmark Archive
-            </button>
-            <button
-              onClick={() => setActiveCategory('monsters')}
-              className={`px-3 py-1.5 rounded-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                activeCategory === 'monsters'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-deep text-foreground/75 hover:bg-muted'
-              }`}
-            >
-              Kaiju and Pop Monsters
-            </button>
-            <button
-              onClick={() => setActiveCategory('ads')}
-              className={`px-3 py-1.5 rounded-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                activeCategory === 'ads'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-deep text-foreground/75 hover:bg-muted'
-              }`}
-            >
-              Vintage Advertisements
-            </button>
-            <button
-              onClick={() => setActiveCategory('cocktail')}
-              className={`px-3 py-1.5 rounded-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                activeCategory === 'cocktail'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-deep text-foreground/75 hover:bg-muted'
-              }`}
-            >
-              Cocktail Hours and Tiki
+              <span>See all {totalWorks} works</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full md:w-64">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search archive titles..."
-              className="w-full pl-9 pr-3 py-1.5 bg-card border border-line text-xs font-mono text-foreground rounded-xs focus:outline-none focus:border-line-strong transition-colors placeholder:text-muted-foreground"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          1b. LANDMARK TRIPTYCH — Greetings from Austin in three eras
-      ────────────────────────────────────────────────────────────────*/}
-      <section className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-amber-500" />
-              THE STUDIO LANDMARK
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif tracking-tight">
-              Greetings from Austin — 1998 to Today
-            </h2>
-          </div>
-          <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-            <Camera className="w-3.5 h-3.5" />
-            Co-created with Bill Johnston • Roadhouse Relics
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {LANDMARK_TRIPTYCH.map((photo, idx) => (
-            <motion.figure
-              key={photo.src}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.55, delay: idx * 0.12, ease: [0.22, 1, 0.36, 1] }}
-              className="group relative overflow-hidden border-2 border-line-strong bg-card shadow-md transition-shadow hover:shadow-xl"
-            >
-              <div className="relative aspect-4/3 overflow-hidden">
-                <img
-                  src={photo.src}
-                  alt={photo.alt}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading={idx === 0 ? 'eager' : 'lazy'}
+          {availableWorks.length === 0 ? (
+            <p className="text-sm text-muted-foreground font-mono py-8 text-center">
+              The studio is between releases — <button onClick={() => openInquiry(null)} className="underline cursor-pointer hover:text-foreground">ask about what is on the easel</button>.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {availableWorks.map((art, idx) => (
+                <ArtworkSaleCard
+                  key={art.slug}
+                  artwork={art}
+                  index={idx}
+                  onInspect={() => setLightboxArtwork(art)}
+                  onInquire={() => openInquiry(art)}
+                  onNavigate={onNavigate}
                 />
-                {/* Era tag */}
-                <span className="absolute top-3 left-3 px-2.5 py-1 bg-black/80 backdrop-blur-xs text-white text-[9px] font-mono font-bold uppercase tracking-widest">
-                  {photo.tag}
-                </span>
-                {/* Hover veil */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-              <figcaption className="p-4 space-y-1 bg-surface">
-                <span className="block font-serif font-black text-sm uppercase tracking-tight text-foreground">
-                  {photo.era}
-                </span>
-                <span className="block text-[11px] text-muted-foreground leading-relaxed">
-                  {photo.caption}
-                </span>
-              </figcaption>
-            </motion.figure>
-          ))}
-        </div>
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. MAIN 2-COLUMN ARCHIVE LAYOUT (PRIMARY FEED & SIDEBAR)
-      ────────────────────────────────────────────────────────────────*/}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        
-        {/* LEFT COLUMN: THE MASTER 2010 EXHIBITION FEED (Kirunam, Terrordon, Jigoku, Utaho) */}
-        <div className="lg:col-span-8 space-y-12 sm:space-y-16">
-          <div className="border-b border-line-strong pb-2 flex items-center justify-between">
-            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-foreground font-serif">
-              Featured Exhibition Works
-            </h2>
-            <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
-              Original Enamel &amp; Panel Masterpieces
+        {/* ─────────────────────────────────────────────────────────────
+            3. WHY BUY HERE — the trust block. Every claim is one the
+            studio can actually stand behind.
+        ────────────────────────────────────────────────────────────────*/}
+        <section className="border-y-2 border-line-strong py-12 sm:py-14 space-y-8">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold">
+              Buying from the artist
             </span>
+            <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
+              No gallery, no markup, no middleman
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              These works are sold directly from the studio they were painted in. You are talking to
+              the artist, and the paperwork says so.
+            </p>
           </div>
 
-          {filteredMainExhibition.map((art) => {
-            const imageUrl = resolveImageUrl(art.imageKey, art.slug);
-
-            return (
-              <article 
-                key={art.id} 
-                className="group bg-card border-2 border-line-strong p-4 sm:p-6 shadow-md transition-all hover:shadow-xl space-y-4"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                icon: BadgeCheck,
+                title: 'Signed & documented',
+                body: 'Every original is signed by the artist and ships with a numbered certificate of authenticity naming the work, medium, dimensions and year.',
+              },
+              {
+                icon: Palette,
+                title: 'Painted by hand',
+                body: 'Enamel on steel and panel, acrylic on board and canvas — no reproductions, no prints sold as originals. Each surface is a one-off.',
+              },
+              {
+                icon: Truck,
+                title: 'Crated & insured',
+                body: 'Panels are custom-crated and insured for transit. Regional delivery around Austin and national freight are both arranged through the studio.',
+              },
+              {
+                icon: Mail,
+                title: 'You reach Rory',
+                body: 'Enquiries land in the studio inbox and are answered by the artist or studio manager — not a sales team. Ask questions before you buy.',
+              },
+            ].map((item) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 0.45 }}
+                className="bg-card border-2 border-line-strong p-5 shadow-sm space-y-3"
               >
-                {/* Artwork Media Box */}
-                <div 
-                  onClick={() => setLightboxArtwork(art)}
-                  className="relative aspect-4/3 bg-surface-deep overflow-hidden border border-line cursor-pointer group/media flex items-center justify-center p-3 sm:p-6"
-                >
-                  {/* Blurred artwork ambience — kills letterbox dead space */}
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-30"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = getArtworkSvg(art.slug);
-                    }}
-                  />
-                  <img
-                    src={imageUrl}
-                    alt={art.title}
-                    referrerPolicy="no-referrer"
-                    className="relative max-h-full max-w-full object-contain drop-shadow-xl transition-transform duration-500 group-hover/media:scale-102"
-                    loading="lazy"
-                  />
+                <item.icon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                <h3 className="font-serif font-black text-base uppercase tracking-tight text-foreground">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{item.body}</p>
+              </motion.div>
+            ))}
+          </div>
 
-                  {/* Corner Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                    <span className="px-2.5 py-1 bg-primary text-primary-foreground text-[10px] font-mono font-bold uppercase tracking-wider">
-                      {art.status}
-                    </span>
-                    <span className="px-2 py-1 bg-card/90 text-foreground text-[10px] font-mono font-bold border border-line">
-                      {art.dimensions}
-                    </span>
-                  </div>
-
-                  {/* Inspect Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-mono text-xs font-bold uppercase tracking-widest">
-                    <Maximize2 className="w-4 h-4" />
-                    <span>Click to Zoom &amp; Inspect</span>
-                  </div>
-                </div>
-
-                {/* Artwork Narrative & Spec details */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-line pb-2">
-                    <h3 
-                      onClick={() => setLightboxArtwork(art)}
-                      className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
-                    >
-                      {art.title}
-                    </h3>
-                    <span className="font-mono font-bold text-sm text-foreground">
-                      {art.price}
-                    </span>
-                  </div>
-
-                  {/* Narrative paragraph in artist's exact voice */}
-                  <p className="text-sm sm:text-base text-foreground/85 leading-relaxed font-serif italic">
-                    &ldquo;{art.narrative}&rdquo;
-                  </p>
-
-                  {/* Specifications & Actions */}
-                  <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-                    <div className="text-muted-foreground">
-                      <span className="font-bold text-foreground">{art.medium}</span> • {art.dimensions}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleArchiveInquiry(art)}
-                        className="px-4 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-wider text-[11px] hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Send className="w-3 h-3 text-emerald-400 dark:text-emerald-600" />
-                        <span>Inquire on Piece</span>
-                      </button>
-                      <button
-                        onClick={() => setLightboxArtwork(art)}
-                        className="px-3 py-2 bg-surface-deep border border-line text-foreground font-bold uppercase tracking-wider text-[11px] hover:bg-muted transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {/* RIGHT COLUMN: 2010 SIDEBAR ARCHIVE, SPOTLIGHT WORKS & ARTIST BIO */}
-        <aside className="lg:col-span-4 space-y-8">
-          
-          {/* 1. Year 2010 Spotlight Card */}
-          <div className="bg-card border-2 border-line-strong p-5 sm:p-6 shadow-md space-y-6">
-            <div className="flex items-center justify-between border-b-2 border-line-strong pb-3">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 bg-amber-500 text-black font-mono font-black text-xs uppercase tracking-widest">
-                  2010
+          {/* Provenance strip — the landmark, in three eras. This is the trust anchor: the
+              single most photographed mural in Austin is by the same hand selling you a panel. */}
+          <div className="pt-4 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                  The landmark behind the name
                 </span>
-                <h3 className="font-serif font-black text-lg uppercase tracking-tight text-foreground">
-                  Archive Spotlight
+                <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground font-serif tracking-tight">
+                  &ldquo;Greetings from Austin&rdquo; — 1998 to today
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                Classic Series
+              <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest">
+                Co-created with Bill Johnston • Roadhouse Relics
               </span>
             </div>
 
-            {/* Spotlight Artworks */}
-            <div className="space-y-6">
-              {SIDEBAR_SPOTLIGHTS.map((item) => {
-                const img = resolveImageUrl(item.imageKey, item.slug);
-                return (
-                  <div key={item.id} className="group space-y-2 border-b border-line pb-4 last:border-0 last:pb-0">
-                    <div 
-                      onClick={() => setLightboxArtwork(item)}
-                      className="relative aspect-16/10 bg-surface-deep border border-line overflow-hidden cursor-pointer group/media flex items-center justify-center p-2"
-                    >
-                      <img 
-                        src={img} 
-                        alt="" 
-                        aria-hidden="true"
-                        className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-30"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getArtworkSvg(item.slug);
-                        }}
-                      />
-                      <img 
-                        src={img} 
-                        alt={item.title} 
-                        referrerPolicy="no-referrer"
-                        className="relative max-h-full max-w-full object-contain drop-shadow-lg transition-transform duration-300 group-hover/media:scale-105"
-                        loading="lazy"
-                      />
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-[9px] font-mono font-bold">
-                        {item.price}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 
-                        onClick={() => setLightboxArtwork(item)}
-                        className="font-serif font-bold text-sm text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors cursor-pointer uppercase"
-                      >
-                        {item.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground font-sans leading-relaxed line-clamp-2">
-                        {item.narrative}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-mono">
-                        <span className="text-muted-foreground">{item.dimensions}</span>
-                        <button
-                          onClick={() => handleArchiveInquiry(item)}
-                          className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <span>Inquire</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              {LANDMARK_TRIPTYCH.map((photo, idx) => (
+                <motion.figure
+                  key={photo.src}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.55, delay: idx * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                  className="group relative overflow-hidden border-2 border-line-strong bg-card shadow-md transition-shadow hover:shadow-xl"
+                >
+                  <div className="relative aspect-4/3 overflow-hidden">
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                    />
+                    <span className="absolute top-3 left-3 px-2.5 py-1 bg-black/80 backdrop-blur-xs text-white text-[9px] font-mono font-bold uppercase tracking-widest">
+                      {photo.tag}
+                    </span>
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
-                );
-              })}
+                  <figcaption className="p-4 space-y-1 bg-surface">
+                    <span className="block font-serif font-black text-sm uppercase tracking-tight text-foreground">
+                      {photo.era}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground leading-relaxed">
+                      {photo.caption}
+                    </span>
+                  </figcaption>
+                </motion.figure>
+              ))}
             </div>
           </div>
+        </section>
 
-          {/* 2. "About Rory Skagen Art" Profile Box */}
-          <div className="bg-card border-2 border-line-strong p-5 sm:p-6 shadow-md space-y-4">
-            <div className="border-b border-line pb-3 flex items-center justify-between">
-              <h3 className="font-serif font-black text-lg uppercase tracking-tight text-foreground">
-                About Rory Skagen Art
-              </h3>
-              <Sparkles className="w-4 h-4 text-amber-500" />
-            </div>
+        {/* ─────────────────────────────────────────────────────────────
+            4. THE STORY, AS CREDENTIALS — four decades, four facts.
+        ────────────────────────────────────────────────────────────────*/}
+        <section className="space-y-8">
+          <div className="border-b border-line-strong pb-3">
+            <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground block mb-1">
+              Four decades of work
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
+              From hand-painted signs to public landmarks
+            </h2>
+          </div>
 
-            {/* Artist portrait / Photo */}
-            <div className="relative aspect-4/3 bg-surface-deep border border-line overflow-hidden flex items-center justify-center">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {STUDIO_TIMELINE.map((beat, idx) => (
+              <motion.div
+                key={beat.year}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.45, delay: idx * 0.08 }}
+                className="bg-card border-2 border-line-strong p-5 shadow-sm space-y-3"
+              >
+                <span className="inline-block px-2.5 py-1 bg-amber-500 text-black font-mono font-black text-xs uppercase tracking-widest">
+                  {beat.year}
+                </span>
+                <h3 className="font-serif font-black text-base uppercase tracking-tight text-foreground leading-tight">
+                  {beat.title}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{beat.body}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────
+            5. THE ARTIST + COMMISSION PATH
+        ────────────────────────────────────────────────────────────────*/}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          <div className="lg:col-span-5">
+            <div className="relative aspect-4/5 bg-surface-deep border-2 border-line-strong overflow-hidden">
               <img
                 src={resolveImageUrl('Rory-Skagen-Photo.jpg', 'rory-skagen-photo')}
-                alt="Artist Rory Skagen"
+                alt="Artist Rory Skagen in the studio"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-top"
                 loading="lazy"
               />
-              <div className="absolute bottom-0 inset-x-0 bg-black/75 backdrop-blur-xs text-white p-2 text-[10px] font-mono text-center">
-                Rory Skagen • Studio Master Artist
+              <div className="absolute bottom-0 inset-x-0 bg-black/75 backdrop-blur-xs text-white p-3 text-[10px] font-mono text-center uppercase tracking-widest">
+                Rory Skagen • Painter &amp; public muralist
               </div>
-            </div>
-
-            <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-sans">
-              Rory Skagen is a pioneering American painter and public muralist based in Austin, Texas. Co-founder of the South Austin Pop Culture Center and co-creator of the legendary <strong className="font-semibold text-foreground">&ldquo;Greetings from Austin&rdquo;</strong> mural, his work merges 1950s atomic pop culture, monster cinema, and retro advertising into an iconic visual universe.
-            </p>
-
-            <div className="pt-2 border-t border-line flex items-center justify-between">
-              <button
-                onClick={() => onNavigate('about')}
-                className="text-xs font-mono font-bold uppercase tracking-wider text-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <span>Read Full Biography</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
 
-          {/* 3. Other Sites & Landmark Projects by Rory */}
-          <div className="bg-surface-deep border border-line p-5 space-y-3 rounded-xs font-mono text-xs">
-            <h4 className="font-bold uppercase tracking-wider text-foreground flex items-center gap-2 border-b border-line pb-2">
-              <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Landmarks and Studio Portals</span>
-            </h4>
-            <ul className="space-y-2.5 text-foreground/80">
-              <li className="flex items-start gap-2">
-                <span className="text-amber-500 font-bold">•</span>
-                <div>
-                  <strong className="text-foreground block">Greetings From Austin Mural</strong>
-                  <span className="text-[11px] text-muted-foreground">South 1st &amp; Annie Street, Austin TX</span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-amber-500 font-bold">•</span>
-                <div>
-                  <strong className="text-foreground block">SouthPop Cultural Center</strong>
-                  <span className="text-[11px] text-muted-foreground">Preserving Central Texas music &amp; art history</span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-amber-500 font-bold">•</span>
-                <div>
-                  <strong className="text-foreground block">Planet K Texas Public Murals</strong>
-                  <span className="text-[11px] text-muted-foreground">Large-scale psychedelic &amp; pop installations</span>
-                </div>
-              </li>
-            </ul>
+          <div className="lg:col-span-7 space-y-6">
+            <div className="space-y-3">
+              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold">
+                The artist
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif tracking-tight">
+                Rory Skagen
+              </h2>
+              <p className="text-sm text-foreground/85 leading-relaxed">
+                An American painter and public muralist working in Austin since 1985, Skagen merges
+                1950s atomic pop culture, monster cinema and retro advertising into a single visual
+                universe — the same eye that painted the city&apos;s best-known wall, applied to
+                panels you can hang.
+              </p>
+            </div>
 
-            <div className="pt-3 border-t border-line">
+            <div className="bg-surface-deep border border-line p-5 space-y-4">
+              <h3 className="font-mono font-bold uppercase tracking-wider text-sm text-foreground flex items-center gap-2 border-b border-line pb-2">
+                <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                Commissioning a work
+              </h3>
+              <ol className="space-y-3 text-xs text-foreground/85">
+                {[
+                  'Tell the studio the subject, the wall or room, and roughly what you want to spend.',
+                  'Rory replies with a size, medium and price — enamel on panel for bold colour, canvas for large fields.',
+                  'A deposit holds the slot; the studio gives you a sketch and a completion window.',
+                  'The finished work ships crated and insured, with its certificate of authenticity.',
+                ].map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="flex-none w-5 h-5 rounded-full bg-amber-500 text-black font-mono font-black text-[10px] flex items-center justify-center mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="leading-relaxed">{step}</span>
+                  </li>
+                ))}
+              </ol>
+              <button
+                onClick={() => openInquiry(null)}
+                className="w-full py-3 bg-primary text-primary-foreground font-mono font-bold uppercase tracking-[0.2em] text-[11px] hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Start a commission enquiry
+              </button>
+              <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-muted-foreground">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Answered by the studio, usually within two business days
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────
+            6. CLOSE — the full catalogue, and the acquisition FAQ.
+        ────────────────────────────────────────────────────────────────*/}
+        <section className="bg-card border-2 border-line-strong p-6 sm:p-10 shadow-lg space-y-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-3 max-w-xl text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[10px] font-mono uppercase tracking-widest font-bold">
+                <Award className="w-3.5 h-3.5" />
+                The complete catalogue
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
+                {totalWorks} documented works, 1985 to today
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Original paintings, enamel on panel, studio editions and landmark public murals —
+                each with medium, dimensions and provenance on record.
+              </p>
+            </div>
+
+            <div className="flex-shrink-0 w-full md:w-auto text-center space-y-3">
               <button
                 onClick={() => onNavigate('gallery')}
-                className="w-full py-2 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[10px] hover:opacity-90 transition-opacity cursor-pointer rounded-xs"
+                className="w-full sm:w-auto px-8 py-3.5 bg-primary text-primary-foreground font-mono font-bold uppercase tracking-[0.2em] text-xs hover:opacity-90 transition-opacity cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
-                Open Full Studio Database
+                <span>Browse the catalogue</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
+              <div className="text-[10px] font-mono text-muted-foreground">
+                Open to collectors, curators, &amp; fine art enthusiasts
+              </div>
             </div>
           </div>
-        </aside>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          3. DUAL CURATED CATEGORY HIGHLIGHTS (VINTAGE ADS & BANNERS)
-      ────────────────────────────────────────────────────────────────*/}
-      <section className="border-t-2 border-b-2 border-line-strong py-10 sm:py-14 space-y-8">
-        <div className="text-center max-w-2xl mx-auto space-y-2">
-          <span className="text-xs font-mono uppercase tracking-[0.25em] text-muted-foreground font-bold">
-            CURATED MEDIUM SPOTLIGHTS
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-black uppercase text-foreground font-serif">
-            Signs, Enamels and Carnival Banners
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          
-          {/* Feature 1: Vintage Food Advertisements (Drebbles) */}
-          <article className="bg-card border-2 border-line-strong p-6 shadow-md flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="border-b border-line pb-2">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-400 font-bold block mb-0.5">
-                  {DUAL_SHOWCASE.vintageAds.sectionTitle}
-                </span>
-                <h3 className="text-2xl font-black uppercase text-foreground font-serif">
-                  {DUAL_SHOWCASE.vintageAds.title}
+          <div className="border-t border-line pt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs">
+            {[
+              {
+                q: 'Can I see a work in person?',
+                a: 'Yes — studio viewings in Austin are by appointment, and enquiries can request extra detail photography first.',
+              },
+              {
+                q: 'How is a purchase completed?',
+                a: 'The studio confirms availability, then invoices directly. Works ship only after payment clears and the crate is insured.',
+              },
+              {
+                q: 'What about editions?',
+                a: 'Studio editions are marked as such with their number. Anything labelled an original is a single, hand-painted work.',
+              },
+            ].map((item) => (
+              <div key={item.q} className="space-y-1.5">
+                <h3 className="font-mono font-bold uppercase tracking-wider text-foreground flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-none mt-0.5" />
+                  {item.q}
                 </h3>
+                <p className="text-muted-foreground leading-relaxed">{item.a}</p>
               </div>
-
-              <div 
-                onClick={() => setLightboxArtwork(DUAL_SHOWCASE.vintageAds as any)}
-                className="relative aspect-4/3 bg-surface-deep border border-line overflow-hidden cursor-pointer flex items-center justify-center p-4 group/media"
-              >
-                <img
-                  src={resolveImageUrl(DUAL_SHOWCASE.vintageAds.imageKey, DUAL_SHOWCASE.vintageAds.slug)}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-30"
-                />
-                <img
-                  src={resolveImageUrl(DUAL_SHOWCASE.vintageAds.imageKey, DUAL_SHOWCASE.vintageAds.slug)}
-                  alt={DUAL_SHOWCASE.vintageAds.title}
-                  referrerPolicy="no-referrer"
-                  className="relative max-h-full max-w-full object-contain drop-shadow-xl transition-transform duration-300 group-hover/media:scale-103"
-                  loading="lazy"
-                />
-                <div className="absolute top-3 right-3 px-2 py-1 bg-primary text-primary-foreground text-[10px] font-mono font-bold">
-                  {DUAL_SHOWCASE.vintageAds.price}
-                </div>
-              </div>
-
-              <p className="text-xs sm:text-sm text-foreground/85 font-serif italic leading-relaxed">
-                {DUAL_SHOWCASE.vintageAds.narrative}
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-line flex items-center justify-between font-mono text-xs">
-              <span className="text-muted-foreground">{DUAL_SHOWCASE.vintageAds.dimensions}</span>
-              <button
-                onClick={() => handleArchiveInquiry(DUAL_SHOWCASE.vintageAds as any)}
-                className="px-4 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-wider text-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                Inquire on Drebbles
-              </button>
-            </div>
-          </article>
-
-          {/* Feature 2: Banner Paintings (Dinosaur Land) */}
-          <article className="bg-card border-2 border-line-strong p-6 shadow-md flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="border-b border-line pb-2">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 dark:text-amber-400 font-bold block mb-0.5">
-                  {DUAL_SHOWCASE.banners.sectionTitle}
-                </span>
-                <h3 className="text-2xl font-black uppercase text-foreground font-serif">
-                  {DUAL_SHOWCASE.banners.title}
-                </h3>
-              </div>
-
-              <div 
-                onClick={() => setLightboxArtwork(DUAL_SHOWCASE.banners as any)}
-                className="relative aspect-4/3 bg-surface-deep border border-line overflow-hidden cursor-pointer flex items-center justify-center p-4 group/media"
-              >
-                <img
-                  src={resolveImageUrl(DUAL_SHOWCASE.banners.imageKey, DUAL_SHOWCASE.banners.slug)}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-30"
-                />
-                <img
-                  src={resolveImageUrl(DUAL_SHOWCASE.banners.imageKey, DUAL_SHOWCASE.banners.slug)}
-                  alt={DUAL_SHOWCASE.banners.title}
-                  referrerPolicy="no-referrer"
-                  className="relative max-h-full max-w-full object-contain drop-shadow-xl transition-transform duration-300 group-hover/media:scale-103"
-                  loading="lazy"
-                />
-                <div className="absolute top-3 right-3 px-2 py-1 bg-amber-600 text-white text-[10px] font-mono font-bold">
-                  {DUAL_SHOWCASE.banners.price}
-                </div>
-              </div>
-
-              <p className="text-xs sm:text-sm text-foreground/85 font-serif italic leading-relaxed">
-                {DUAL_SHOWCASE.banners.narrative}
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-line flex items-center justify-between font-mono text-xs">
-              <span className="text-muted-foreground">{DUAL_SHOWCASE.banners.dimensions}</span>
-              <button
-                onClick={() => handleArchiveInquiry(DUAL_SHOWCASE.banners as any)}
-                className="px-4 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-wider text-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                Inquire on Banners
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. THE 5-COLUMN CURATED SERIES GRID (EXACT ARCHIVE HOMAGE)
-      ────────────────────────────────────────────────────────────────*/}
-      <section className="space-y-8">
-        <div className="border-b border-line-strong pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-muted-foreground block mb-1">
-              CANONICAL 2010 COLLECTIONS
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
-              Curated Series and Groups
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigate('gallery')}
-            className="text-xs font-mono font-bold uppercase tracking-wider text-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <span>Browse Complete Catalog ({totalWorks} Works)</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* 5 Column Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-          {CURATED_FIVE_COLUMNS.map((col, index) => {
-            const featImg = resolveImageUrl(col.featured.imageKey, col.featured.slug);
-
-            return (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
-                className="bg-card border-2 border-line-strong p-4 shadow-sm flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-3">
-                  {/* Column Header */}
-                  <div className="border-b-2 border-line-strong pb-2">
-                    <h3 className="font-serif font-black text-base uppercase text-foreground tracking-tight leading-tight">
-                      {col.columnTitle}
-                    </h3>
-                  </div>
-
-                  {/* Featured Item Preview */}
-                  <div 
-                    onClick={() => setLightboxArtwork(col.featured)}
-                    className="relative aspect-4/3 bg-surface-deep border border-line overflow-hidden cursor-pointer flex items-center justify-center p-2 group/media"
-                  >
-                    <img 
-                      src={featImg} 
-                      alt="" 
-                      aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-30"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = getArtworkSvg(col.featured.slug);
-                      }}
-                    />
-                    <img 
-                      src={featImg} 
-                      alt={col.featured.title} 
-                      referrerPolicy="no-referrer"
-                      className="relative max-h-full max-w-full object-contain drop-shadow-lg transition-transform duration-300 group-hover/media:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-primary text-primary-foreground text-[8px] font-mono font-bold">
-                      {col.featured.price}
-                    </div>
-                  </div>
-
-                  {/* Featured Item Title & Narrative snippet */}
-                  <div className="space-y-1">
-                    <h4 
-                      onClick={() => setLightboxArtwork(col.featured)}
-                      className="font-serif font-bold text-sm text-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer uppercase line-clamp-1"
-                    >
-                      {col.featured.title}
-                    </h4>
-                    <p className="text-[11px] text-muted-foreground font-sans leading-snug line-clamp-2">
-                      {col.featured.narrative}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Sub-links to related works in this column */}
-                <div className="pt-3 border-t border-line space-y-1.5">
-                  <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground block">
-                    More in Series:
-                  </span>
-                  <ul className="space-y-1 text-xs font-sans">
-                    {col.links.map((link, lidx) => (
-                      <li key={lidx} className="flex items-center justify-between gap-1">
-                        <button
-                          onClick={() => onNavigate('artwork', link.slug)}
-                          className="text-left text-foreground/85 hover:text-amber-600 dark:hover:text-amber-400 hover:underline transition-colors cursor-pointer line-clamp-1 text-[11px]"
-                        >
-                          {link.title}
-                        </button>
-                        {link.price && (
-                          <span className="text-[9px] font-mono text-muted-foreground flex-shrink-0">
-                            {link.price}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          5. STUDIO PORTAL & COLLECTOR GATEWAY
-      ────────────────────────────────────────────────────────────────*/}
-      <section className="bg-card border-2 border-line-strong p-6 sm:p-10 shadow-lg">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-3 max-w-xl text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[10px] font-mono uppercase tracking-widest font-bold">
-              <Award className="w-3.5 h-3.5" />
-              <span>Collector &amp; Studio Database</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
-              Explore the Complete Catalogue — {totalWorks} Works
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
-              The full Rory Skagen Studio archive spans 1985 to present day — original paintings, enamels on panel, and landmark public murals. Open to collectors, curators, and fine art enthusiasts.
-            </p>
-          </div>
-
-          <div className="flex-shrink-0 w-full md:w-auto text-center space-y-3">
-            <button
-              onClick={() => onNavigate('gallery')}
-              className="w-full sm:w-auto px-8 py-3.5 bg-primary text-primary-foreground font-mono font-bold uppercase tracking-[0.2em] text-xs hover:opacity-90 transition-opacity cursor-pointer shadow-md flex items-center justify-center gap-2"
-            >
-              <span>Explore Master Catalog</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <div className="text-[10px] font-mono text-muted-foreground">
-              Open to collectors, curators, &amp; fine art enthusiasts
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          6. LIGHTBOX / HIGH-RES ARTWORK INSPECTION MODAL
+          7. LIGHTBOX — high-resolution inspection before committing.
       ────────────────────────────────────────────────────────────────*/}
       {lightboxArtwork && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
           <div className="relative w-full max-w-4xl max-h-[90vh] bg-card border-2 border-line-strong p-4 sm:p-8 shadow-2xl overflow-y-auto flex flex-col md:flex-row gap-6">
-            {/* Close Button */}
             <button
               onClick={() => setLightboxArtwork(null)}
               className="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground bg-surface-deep border border-line p-1.5 transition-colors cursor-pointer"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {/* Lightbox Image Stage */}
             <div className="md:w-3/5 bg-surface-deep border border-line flex items-center justify-center p-4 min-h-[300px]">
               <img
-                src={resolveImageUrl(
-                  (lightboxArtwork as ArchiveFeatureDef).imageKey || (lightboxArtwork as any).featured_image || '',
-                  lightboxArtwork.slug
-                )}
+                src={
+                  resolveAssetUrl(lightboxArtwork.featured_image, lightboxArtwork.slug, 'hero') ||
+                  lightboxArtwork.imageUrl ||
+                  getArtworkSvg(lightboxArtwork.slug)
+                }
                 alt={lightboxArtwork.title}
                 referrerPolicy="no-referrer"
                 className="max-h-[70vh] max-w-full object-contain"
               />
             </div>
 
-            {/* Lightbox Metadata & Narrative */}
             <div className="md:w-2/5 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="border-b border-line pb-2">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-400 font-bold block mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 dark:text-amber-400 font-bold block mb-1">
                     {lightboxArtwork.year} • {lightboxArtwork.status}
                   </span>
                   <h3 className="text-2xl sm:text-3xl font-black uppercase text-foreground font-serif">
@@ -1151,18 +550,31 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
                 </div>
 
                 <div className="text-xs font-mono space-y-1 text-muted-foreground">
-                  <div><strong className="text-foreground">Medium:</strong> {lightboxArtwork.medium}</div>
-                  <div><strong className="text-foreground">Dimensions:</strong> {lightboxArtwork.dimensions}</div>
-                  <div><strong className="text-foreground">Price:</strong> {lightboxArtwork.price}</div>
+                  <div>
+                    <strong className="text-foreground">Medium:</strong> {lightboxArtwork.medium}
+                  </div>
+                  <div>
+                    <strong className="text-foreground">Dimensions:</strong> {lightboxArtwork.dimensions}
+                  </div>
+                  <div>
+                    <strong className="text-foreground">Price:</strong> {lightboxArtwork.price}
+                  </div>
                 </div>
 
                 {lightboxArtwork.narrative && (
                   <div className="pt-2 border-t border-line">
                     <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground block mb-1">
-                      Artist Statement:
+                      Artist statement
                     </span>
-                    <p className="text-xs sm:text-sm text-foreground/85 font-serif italic leading-relaxed">
-                      &ldquo;{lightboxArtwork.narrative}&rdquo;
+                    {/*
+                      The catalogue stores narratives as raw markdown — wiki-links, image embeds,
+                      frontmatter fences. Piping that straight into a buyer's modal shows them
+                      `[[index|← Return to Master Catalog Index]]` and `![[r.jpg]]`, which reads as a
+                      broken page. `heroExcerpt` is the existing, tested cleaner for exactly this
+                      scaffolding.
+                    */}
+                    <p className="text-xs sm:text-sm text-foreground/85 font-serif italic leading-relaxed line-clamp-[10]">
+                      &ldquo;{heroExcerpt(lightboxArtwork.narrative)}&rdquo;
                     </p>
                   </div>
                 )}
@@ -1170,40 +582,28 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
 
               <div className="pt-4 border-t border-line space-y-2">
                 <button
-                  onClick={() => {
-                    const rec: ArtworkRecord = {
-                      slug: lightboxArtwork.slug,
-                      title: lightboxArtwork.title,
-                      year: lightboxArtwork.year,
-                      medium: lightboxArtwork.medium,
-                      dimensions: lightboxArtwork.dimensions,
-                      price: lightboxArtwork.price,
-                      status: lightboxArtwork.status as any,
-                      featured_image: (lightboxArtwork as ArchiveFeatureDef).imageKey || '',
-                      gallery_series: 'Studio Archive',
-                      narrative: lightboxArtwork.narrative,
-                      filePath: `posts/${lightboxArtwork.slug}.md`
-                    };
-                    setSelectedInquiryArtwork(rec);
-                    setLightboxArtwork(null);
-                    setInquiryModalOpen(true);
-                  }}
+                  onClick={() => openInquiry(lightboxArtwork)}
                   className="w-full py-3 bg-primary text-primary-foreground font-bold uppercase tracking-[0.2em] text-[11px] hover:opacity-90 transition-opacity cursor-pointer shadow-md flex items-center justify-center gap-2"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  <span>Send Studio Inquiry</span>
+                  Inquire about this work
                 </button>
 
+                <button
+                  onClick={() => {
+                    const slug = lightboxArtwork.slug;
+                    setLightboxArtwork(null);
+                    onNavigate('artwork', slug);
+                  }}
+                  className="w-full py-2 bg-surface-deep text-foreground font-mono font-bold uppercase tracking-wider text-[10px] border border-line hover:bg-muted transition-colors cursor-pointer"
+                >
+                  Open the full dossier →
+                </button>
                 {isAuthenticated && (
-                  <button
-                    onClick={() => {
-                      setLightboxArtwork(null);
-                      onNavigate('artwork', lightboxArtwork.slug);
-                    }}
-                    className="w-full py-2 bg-surface-deep text-foreground font-mono font-bold uppercase tracking-wider text-[10px] border border-line hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    Open in Studio Focus View →
-                  </button>
+                  <div className="text-[10px] font-mono text-center text-muted-foreground pt-1">
+                    <Maximize2 className="w-3 h-3 inline mr-1" />
+                    Signed in as studio staff
+                  </div>
                 )}
               </div>
             </div>
@@ -1211,11 +611,6 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
         </div>
       )}
 
-      </div>{/* ── end inset content frame ── */}
-
-      {/* ─────────────────────────────────────────────────────────────
-          7. ACQUISITION & GENERAL INQUIRY MODAL
-      ────────────────────────────────────────────────────────────────*/}
       <InquiryModal
         artwork={selectedInquiryArtwork}
         isOpen={inquiryModalOpen}
@@ -1225,5 +620,123 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
         }}
       />
     </div>
+  );
+};
+
+/**
+ * A single purchasable work.
+ *
+ * The card leads with the painting, then title, then the three things a buyer needs before they
+ * will email a stranger: size, medium, price. "Sold" and "Archived" are rendered as status, not as
+ * a price, so the grid never implies something is buyable when it is not.
+ */
+const ArtworkSaleCard: React.FC<{
+  artwork: ArtworkRecord;
+  index: number;
+  onInspect: () => void;
+  onInquire: () => void;
+  onNavigate: (route: string, param?: string) => void;
+}> = ({ artwork, index, onInspect, onInquire, onNavigate }) => {
+  const imageUrl =
+    resolveAssetUrl(artwork.featured_image, artwork.slug, 'hero') ||
+    artwork.imageUrl ||
+    getArtworkSvg(artwork.slug);
+  const forSale = FOR_SALE.has(artwork.status);
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.45, delay: (index % 3) * 0.08 }}
+      className="group bg-card border-2 border-line-strong shadow-sm hover:shadow-xl transition-shadow flex flex-col"
+    >
+      <div
+        onClick={onInspect}
+        className="relative aspect-4/3 bg-surface-deep overflow-hidden cursor-pointer flex items-center justify-center p-4"
+      >
+        {/* Blurred ambience so non-matching aspect ratios never letterbox into dead space */}
+        <img
+          src={imageUrl}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-30"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = getArtworkSvg(artwork.slug);
+          }}
+        />
+        <img
+          src={imageUrl}
+          alt={artwork.title}
+          referrerPolicy="no-referrer"
+          className="relative max-h-full max-w-full object-contain drop-shadow-xl transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
+
+        <div className="absolute top-3 left-3">
+          <span
+            className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider ${
+              forSale
+                ? 'bg-emerald-600 text-white'
+                : 'bg-black/75 text-white/90'
+            }`}
+          >
+            {artwork.status}
+          </span>
+        </div>
+
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-mono text-xs font-bold uppercase tracking-widest">
+          <Maximize2 className="w-4 h-4" />
+          <span>Zoom &amp; inspect</span>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-3 border-b border-line pb-2">
+          <button
+            onClick={() => onNavigate('artwork', artwork.slug)}
+            className="text-left font-serif font-black text-lg uppercase tracking-tight text-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer leading-tight"
+          >
+            {artwork.title}
+          </button>
+          <span className="font-mono font-bold text-sm text-foreground whitespace-nowrap flex-none">
+            {forSale ? artwork.price : '—'}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Ruler className="w-3 h-3" />
+            {artwork.dimensions}
+          </span>
+          <span className="truncate">{artwork.medium}</span>
+        </div>
+
+        <div className="pt-2 mt-auto flex items-center gap-2">
+          {forSale ? (
+            <button
+              onClick={onInquire}
+              className="flex-1 px-4 py-2 bg-primary text-primary-foreground font-mono font-bold uppercase tracking-wider text-[11px] hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              Inquire to purchase
+            </button>
+          ) : (
+            <button
+              onClick={() => onNavigate('artwork', artwork.slug)}
+              className="flex-1 px-4 py-2 bg-surface-deep border border-line text-foreground font-mono font-bold uppercase tracking-wider text-[11px] hover:bg-muted transition-colors cursor-pointer"
+            >
+              View the dossier
+            </button>
+          )}
+          <button
+            onClick={onInspect}
+            aria-label={`Inspect ${artwork.title}`}
+            className="px-3 py-2 bg-surface-deep border border-line text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </motion.article>
   );
 };

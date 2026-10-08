@@ -2,13 +2,20 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
-import { HeroGallerySlider, heroExcerpt } from './HeroGallerySlider';
+import {
+  HeroGallerySlider,
+  heroExcerpt,
+  HERO_BLUR_SOFT,
+  HERO_BLUR_SHARP,
+  HERO_FOCUS_IN_MS,
+  HERO_SLIDE_DURATION_MS,
+} from './HeroGallerySlider';
 import { ArtworkRecord } from '../types';
 
 /**
  * Hero background-slider contracts:
  *   - The slider is an absolute backdrop: it fills its positioning parent
- *   - The artwork cover-crops the container (object-cover), ambient blur
+ *   - The artwork cover-crops the container and resolves to ZERO blur
  *   - No artwork meta card: no title, status chip, or Explore/Inquire CTAs
  *   - Drafts and disabled works never rotate into the backdrop
  *   - Controls: ghost arrows navigate, dots jump, autoplay pause/resume
@@ -43,12 +50,56 @@ describe('HeroGallerySlider — background backdrop', () => {
     expect(slider.className).toContain('inset-0');
   });
 
-  it('artwork cover-crops the container: object-cover, ambient blur, no meta matte', () => {
+  it('artwork cover-crops the container: object-cover, no meta matte', () => {
     render(<HeroGallerySlider artworks={[mkArtwork()]} />);
     const backdrop = document.querySelector('img[aria-hidden="true"]') as HTMLImageElement;
     expect(backdrop.getAttribute('src')).toContain('terrordon.webp');
     expect(backdrop.className).toContain('object-cover');
-    expect(backdrop.className).toContain('blur-');
+  });
+
+  /**
+   * The focus-pull contract. This replaces an earlier assertion that the image
+   * carried a persistent `blur-` CLASS — which pinned the hero permanently soft
+   * and meant no artwork was ever shown at full fidelity.
+   *
+   * Blur is now animated (an inline `filter`), so it cannot be asserted from
+   * className. jsdom has no Web Animations API and framer-motion drives values
+   * on rAF, so these assertions run against the module's exported endpoints.
+   *
+   * ⚠️ The endpoints MUST be non-equal and the sharp end must be blur(0px).
+   * A 3-stop keyframe array with a per-property `times` list was tried and did
+   * NOT interpolate — it left the hero pinned at blur(12px) permanently, which
+   * is worse than the static blur it replaced. This test is the guard.
+   */
+  it('pulls focus from a soft entrance to dead sharp', () => {
+    expect(HERO_BLUR_SOFT).toMatch(/blur\((?!0px)\d/); // non-zero entrance
+    expect(HERO_BLUR_SHARP).toBe('blur(0px)'); // resolves fully sharp
+    expect(HERO_BLUR_SOFT).not.toBe(HERO_BLUR_SHARP); // actually animates
+  });
+
+  it('lands focus early, not at the very end of the slide', () => {
+    // A focus pull that only sharpens on the last frame would read as a tease.
+    expect(HERO_FOCUS_IN_MS).toBeGreaterThan(0);
+    expect(HERO_FOCUS_IN_MS).toBeLessThan(HERO_SLIDE_DURATION_MS);
+    // Comfortably inside the dwell — at least half of it spent sharp.
+    expect(HERO_FOCUS_IN_MS / HERO_SLIDE_DURATION_MS).toBeLessThanOrEqual(0.5);
+  });
+
+  it('applies the soft blur on the first frame, not just after settle', () => {
+    render(<HeroGallerySlider artworks={[mkArtwork()]} />);
+    const backdrop = document.querySelector('img[aria-hidden="true"]') as HTMLImageElement;
+    // framer-motion writes `initial` to the inline style before animating. If
+    // this regresses to blur(0px), there is no entrance at all.
+    const inline = backdrop.style.filter || backdrop.getAttribute('style') || '';
+    expect(inline).toContain('blur');
+  });
+
+  it('keeps a persistent class blur off the backdrop entirely', () => {
+    render(<HeroGallerySlider artworks={[mkArtwork()]} />);
+    const backdrop = document.querySelector('img[aria-hidden="true"]') as HTMLImageElement;
+    // Regression guard: a static `blur-[6px]` here is what made the hero
+    // permanently out of focus. Blur must live only in the animated filter.
+    expect(backdrop.className).not.toMatch(/(?:^|\s)blur-/);
   });
 
   it('has no artwork meta card: no Explore/Inquire CTAs, no title button, no status chip', () => {
