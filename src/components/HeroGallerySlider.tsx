@@ -48,11 +48,44 @@ interface HeroGallerySliderProps {
 /**
  * Hero background slider — a pure ambient layer, designed to sit absolute
  * behind the home masthead. The current artwork cover-crops the full
- * container (no letterbox gaps for any aspect ratio), softened with a blur
- * and a gradient wash so overlaid text always reads. No artwork meta card:
- * this is atmosphere, not a detail view. Crossfades between works with a
- * slow settle; ghost arrows, dot strip and play/pause are the only chrome.
+ * container (no letterbox gaps for any aspect ratio), with a gradient wash so
+ * overlaid text always reads. No artwork meta card: this is atmosphere, not a
+ * detail view.
+ *
+ * MOTION — the "focus pull". Each slide arrives soft and resolves to sharp:
+ *   - opacity  0 → 1   (crossfade between works)
+ *   - blur    12px → 0 (the painting comes into focus)
+ *   - scale  1.07 → 1  (a slow settle, so it never sits perfectly still)
+ *
+ * The blur resolves across `FOCUS_IN_MS` at the head of the slide, then holds
+ * at 0 for the remainder of the dwell — so the work is RAZOR SHARP for most of
+ * the time it is on screen, and softness only ever reads as an entrance. The
+ * scale keeps easing over the whole dwell (linear, ~8s), which is what stops
+ * the image looking frozen once it is in focus.
+ *
+ * ⚠️ Blur is deliberately NOT a persistent class. `blur-[6px]` used to sit in
+ * the className, which meant the hero was permanently out of focus and no
+ * artwork was ever presented at full fidelity — on a page whose job is to sell
+ * the work, that is the wrong default. The keyframes below end at blur(0).
  */
+const FOCUS_IN_MS = 1800;
+
+/** Slide dwell. Long enough that the zoom reads as a drift, not a movement. */
+const SLIDE_DURATION = 7000;
+
+/**
+ * The focus-pull endpoints, exported so the test asserts the REAL contract
+ * rather than a hand-copied duplicate. jsdom has no Web Animations API and
+ * framer-motion drives values on rAF, so a rendered-element assertion cannot
+ * see the timeline — the module itself is the reliable source of truth.
+ *
+ * ⚠️ These must be a two-value pair. A 3-stop keyframe array with a per-property
+ * `times` list did NOT interpolate and pinned the hero at HERO_BLUR_SOFT forever.
+ */
+export const HERO_BLUR_SOFT = 'blur(12px)';
+export const HERO_BLUR_SHARP = 'blur(0px)';
+export const HERO_FOCUS_IN_MS = FOCUS_IN_MS;
+export const HERO_SLIDE_DURATION_MS = SLIDE_DURATION;
 export const HeroGallerySlider: React.FC<HeroGallerySliderProps> = ({ artworks }) => {
   const heroItems = React.useMemo(() => {
     const valid = artworks.filter(
@@ -68,7 +101,6 @@ export const HeroGallerySlider: React.FC<HeroGallerySliderProps> = ({ artworks }
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  const SLIDE_DURATION = 7000;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
@@ -136,27 +168,42 @@ export const HeroGallerySlider: React.FC<HeroGallerySliderProps> = ({ artworks }
       role="presentation"
       aria-label="Featured artwork backdrop"
     >
-      {/* Crossfading cover-cropped artwork backdrops */}
-      <AnimatePresence initial={false}>
+      {/* Crossfading cover-cropped artwork backdrops.
+          ⚠️ `initial={false}` would suppress the mount animation for the FIRST
+          slide only; leaving it off lets the opening artwork perform its focus
+          pull like every other rotation. */}
+      <AnimatePresence initial={true}>
         <motion.div
           key={currentArtwork.slug}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-0"
         >
           {/* The artwork itself — cover-crops the container: works for
-              portrait, landscape, square, panoramic. Gentle blur + settle
-              keeps it ambient so overlay text reads. */}
+              portrait, landscape, square, panoramic.
+
+              The focus pull: blur eases 12px → 0 over FOCUS_IN_MS at the head of
+              the slide, then STAYS sharp. `scale` keeps easing linearly across
+              the whole dwell so the image still breathes once focused.
+
+              ⚠️ Blur is a plain two-value `initial`→`animate` pair, NOT a
+              keyframe array. A 3-stop array with a per-property `times` list
+              does not interpolate here — it left the hero pinned at blur(12px)
+              permanently, worse than the static blur it replaced. Verified by
+              tracing the inline filter on mount; keep this shape. */}
           <motion.img
             src={heroSrc}
             alt=""
             aria-hidden="true"
-            initial={{ scale: 1.07 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: SLIDE_DURATION / 1000 + 1, ease: 'linear' }}
-            className="absolute inset-0 w-full h-full object-cover blur-[6px] brightness-90 dark:brightness-[0.72]"
+            initial={{ scale: 1.07, filter: HERO_BLUR_SOFT }}
+            animate={{ scale: 1, filter: HERO_BLUR_SHARP }}
+            transition={{
+              scale: { duration: SLIDE_DURATION / 1000 + 1, ease: 'linear' },
+              filter: { duration: FOCUS_IN_MS / 1000, ease: 'easeOut' },
+            }}
+            className="absolute inset-0 w-full h-full object-cover brightness-90 dark:brightness-[0.72]"
             onError={(e) => {
               (e.target as HTMLImageElement).src = getArtworkSvg(currentArtwork.slug);
             }}
