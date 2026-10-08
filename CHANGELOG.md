@@ -7,18 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.2.1] - 2026-10-06
-
-### Changed
-
-- **Navbar:** added a **Shop** link to the Fourthwall storefront (`https://shop.roryskagenart.com`)
-  as a real anchor opening in a new tab — the hash router has no `shop` route, so a router button
-  would silently render nothing. **"Home" and "Dashboard" are now icon-only buttons** (`aria-label`
-  and `title` preserved) and **"Contact Me" is now "Contact"**, to buy horizontal room. Mobile
-  keeps icon + label. Pinned by `src/test/navbarLinks.test.tsx` (6 tests).
-
----
-
 ## [3.2.0] - 2026-09-16
 
 > **"Group" — the board becomes a real tool rather than a list.** The second release of the studio

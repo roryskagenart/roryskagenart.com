@@ -21,25 +21,6 @@ export type { ReleaseLog };
 export const RELEASE_LOG: ReleaseLog = {
   "changelog": [
     {
-      "version": "3.2.1",
-      "date": "2026-10-06",
-      "summary": null,
-      "sections": [
-        {
-          "heading": "Changed",
-          "category": "Changed",
-          "entries": [
-            {
-              "text": "Navbar: added a Shop link to the Fourthwall storefront (https://shop.roryskagenart.com) as a real anchor opening in a new tab — the hash router has no shop route, so a router button would silently render nothing. \"Home\" and \"Dashboard\" are now icon-only buttons (aria-label and title preserved) and \"Contact Me\" is now \"Contact\", to buy horizontal room. Mobile keeps icon + label. Pinned by src/test/navbarLinks.test.tsx (6 tests).",
-              "details": [],
-              "raw": "**Navbar:** added a **Shop** link to the Fourthwall storefront (`https://shop.roryskagenart.com`)\n  as a real anchor opening in a new tab — the hash router has no `shop` route, so a router button\n  would silently render nothing. **\"Home\" and \"Dashboard\" are now icon-only buttons** (`aria-label`\n  and `title` preserved) and **\"Contact Me\" is now \"Contact\"**, to buy horizontal room. Mobile\n  keeps icon + label. Pinned by `src/test/navbarLinks.test.tsx` (6 tests)."
-            }
-          ]
-        }
-      ],
-      "unreleased": false
-    },
-    {
       "version": "3.2.0",
       "date": "2026-09-16",
       "summary": "\"Group\" — the board becomes a real tool rather than a list. The second release of the studio feedback & planning program. Releases become first-class, the board can be read grouped by them, a single item can be opened and triaged, the nav shows what is waiting, and new public submissions reach the studio in one batched email instead of one message each. Two migrations (both additive and idempotent), applied 2026-09-16.",
@@ -1854,33 +1835,13 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "deployments": [
     {
-      "date": "2026-10-06",
-      "version": "v3.2.1",
-      "url": "https://roryskagenart-mwu5lyrnx-roryskagenart.vercel.app",
-      "status": "● Ready",
-      "buildTime": "n/a",
-      "target": "Production",
-      "commits": "bbde738: PR #1 — navbar compaction (ui/navbar-shop-link): adds a Shop link to the Fourthwall storefront as a real <a target=\"_blank\" rel=\"noopener noreferrer\"> (the hash router has no shop route — a router button would silently render nothing), Home and Dashboard become icon-only buttons (aria-label/title preserved), \"Contact Me\" → \"Contact\". UI-only: no schema, no migration, no API change. New src/test/navbarLinks.test.tsx (6 tests). Annotated tag v3.2.1 points at this commit — the current roryskagenart project production deploy. ⚠️ Note: bundleSafety.test.ts fails pre-existing (4 tests) on both this tree and its parent — reproduced via git stash; unrelated to the release",
-      "flagged": true
-    },
-    {
-      "date": "2026-10-06",
-      "version": "v3.2.1-preview",
-      "url": "https://roryskagenart-lulmqawom-roryskagenart.vercel.app",
-      "status": "● Ready",
-      "buildTime": "n/a",
-      "target": "Preview",
-      "commits": "bede322: ui/navbar-shop-link preview (PR #1)",
-      "flagged": false
-    },
-    {
       "date": "2026-09-16",
       "version": "post-v3.2.0",
       "url": "https://roryskagen-mxvkxg6hy-ventureio.vercel.app",
       "status": "● Ready",
       "buildTime": "n/a",
       "target": "Production",
-      "commits": "b6d13cb9: PR #40 — the password-reset / invite landing fix (fix/password-reset-redirect). Supabase redirects an emailed token to the bare origin — the app is a hash-router SPA, so …/#/admin#access_token=… would be unparseable and silently drop the session (src/lib/authRedirect.ts, bareOrigin()). The cost was that a resetting user landed on the public homepage with a live recovery session and no reset screen: PasswordSetupView renders only inside AdminApp, which only renders on #/admin. src/App.tsx now reads authHandoff from useAuth() and, while one is pending, sets window.location.hash = '#/admin' — so the screen is reached without the user having to find the Dashboard link. This is the current ventureio/roryskagen production deploy, superseding 8ad53e1e there. (On the roryskagenart project the newest deploy is bbde738/v3.2.1 — see the newest row.) Annotated tag v3.2.0 does not point here — see the v3.2.0 row below",
+      "commits": "b6d13cb9: PR #40 — the password-reset / invite landing fix (fix/password-reset-redirect). Supabase redirects an emailed token to the bare origin — the app is a hash-router SPA, so …/#/admin#access_token=… would be unparseable and silently drop the session (src/lib/authRedirect.ts, bareOrigin()). The cost was that a resetting user landed on the public homepage with a live recovery session and no reset screen: PasswordSetupView renders only inside AdminApp, which only renders on #/admin. src/App.tsx now reads authHandoff from useAuth() and, while one is pending, sets window.location.hash = '#/admin' — so the screen is reached without the user having to find the Dashboard link. This commit is main's tip, so it supersedes 8ad53e1e as the Current Active deploy. Annotated tag v3.2.0 does not point here — see the v3.2.0 row below",
       "flagged": false
     },
     {
@@ -2745,8 +2706,8 @@ export const RELEASE_LOG: ReleaseLog = {
     }
   ],
   "diagnostics": {
-    "releases": 23,
-    "deploymentRows": 89,
+    "releases": 22,
+    "deploymentRows": 87,
     "warnings": []
   }
 };
