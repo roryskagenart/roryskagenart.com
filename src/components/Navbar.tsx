@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { 
   Sun, 
   Moon, 
-  Menu, 
+  Menu,
+  Home,
+  LayoutDashboard,
   X
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -21,12 +23,28 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = [
-    { id: 'home', label: 'Home' },
+  // `external: true` marks a link the hash router cannot handle: it renders as a real <a>
+  // with target="_blank" instead of going through onNavigate.
+  const navLinks: Array<{
+    id: string;
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    external?: boolean;
+    href?: string;
+  }> = [
+    { id: 'home', label: 'Home', icon: Home },
     { id: 'gallery', label: 'Catalog' },
     { id: 'about', label: 'About' },
-    { id: 'contact', label: 'Contact Me' },
-    ...(isAuthenticated ? [{ id: '/admin', label: 'Dashboard' }] : []),
+    { id: 'contact', label: 'Contact' },
+    {
+      id: 'shop',
+      label: 'Shop',
+      external: true,
+      href: 'https://shop.roryskagenart.com',
+    },
+    ...(isAuthenticated
+      ? [{ id: '/admin', label: 'Dashboard', icon: LayoutDashboard }]
+      : []),
   ];
 
   const handleNavClick = (id: string) => {
@@ -75,17 +93,39 @@ export const Navbar: React.FC<NavbarProps> = ({
                 currentRoute === link.id ||
                 (link.id === 'gallery' && (currentRoute === 'catalog' || currentRoute.startsWith('artwork/')));
 
+              // External links (the Fourthwall storefront) bypass the hash router entirely.
+              if (link.external && link.href) {
+                return (
+                  <a
+                    key={link.id}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-1.5 transition-all relative text-muted-foreground hover:text-foreground"
+                  >
+                    <span>{link.label}</span>
+                  </a>
+                );
+              }
+
+              const Icon = link.icon;
               return (
                 <button
                   key={link.id}
                   onClick={() => handleNavClick(link.id)}
+                  title={link.icon ? link.label : undefined}
+                  aria-label={link.icon ? link.label : undefined}
                   className={`py-1.5 transition-all cursor-pointer relative ${
                     isActive
                       ? 'text-foreground font-black'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <span>{link.label}</span>
+                  {Icon ? (
+                    <Icon className="w-4 h-4" />
+                  ) : (
+                    <span>{link.label}</span>
+                  )}
                   {isActive && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-line-strong animate-in fade-in" />
                   )}
@@ -145,6 +185,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               const isActive =
                 currentRoute === link.id ||
                 (link.id === 'gallery' && (currentRoute === 'catalog' || currentRoute.startsWith('artwork/')));
+              // External links (the Fourthwall storefront) bypass the hash router entirely.
+              if (link.external && link.href) {
+                return (
+                  <a
+                    key={link.id}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full text-left px-3 py-2.5 rounded-xs transition-colors flex items-center justify-between text-foreground/80 hover:bg-muted"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      {link.icon && <link.icon className="w-4 h-4" />}
+                      {link.label}
+                    </span>
+                    <span className="text-[10px]">↗</span>
+                  </a>
+                );
+              }
+
               return (
                 <button
                   key={link.id}
@@ -155,7 +214,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                       : 'text-foreground/80 hover:bg-muted'
                   }`}
                 >
-                  <span>{link.label}</span>
+                  <span className="flex items-center gap-2.5">
+                    {link.icon && <link.icon className="w-4 h-4" />}
+                    {link.label}
+                  </span>
                   {isActive && <span className="text-[10px]">●</span>}
                 </button>
               );

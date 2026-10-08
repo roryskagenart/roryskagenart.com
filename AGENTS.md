@@ -4,11 +4,14 @@
 > repo. Read this **first** — it supersedes the historical specs in `/plan`, which contain
 > stale assumptions from earlier Cloudinary-era work.
 >
-> **Verified against:** release `v3.1.0` (2026-09-15), the studio feedback & planning tool. The
-> schema section was re-verified by live introspection — see `data/archive/schema_introspection.md`.
-> `v3.1.0` added exactly one table (`plan_items`) and one migration, so everything else below still
-> carries the `v3.0.0` / `v2.10.0` verification. ⚠️ This header was stale for three releases
-> (`v2.14.0`–`v3.0.0`); it is now part of the release checklist — see §8.
+> **Verified against:** release `v3.2.1` (2026-10-06) — navbar compaction: a Shop link to the
+> Fourthwall storefront (a real anchor, not a hash-router button), Home/Dashboard as icon-only
+> buttons with labels preserved for AT, "Contact Me" → "Contact". UI-only: no schema, API, or
+> dependency change; `v3.2.0` ("Group", 2026-09-16) added 2 migrations (`plan_releases` +
+> `plan_items.notified_at`) and one cron job (`/api/cron/plan-digest`), bringing the repo to
+> **18 migration files**. The schema section was last re-verified by live introspection against
+> `v3.1.0` — see `data/archive/schema_introspection.md`. ⚠️ This header was stale for three
+> releases (`v2.14.0`–`v3.0.0`) before that; it is part of the release checklist — see §9.
 
 ---
 
@@ -22,7 +25,39 @@ art) into this app's Supabase catalog. See `plan/PRD_V3_WAYBACK_DATA_MIGRATION.m
 
 ---
 
-## 2. Verified stack (do not assume otherwise)
+## 2. Dev environment & commands (transcribed from `package.json` — do not guess)
+
+`npm ci` (or `npm install`) is required first; `node_modules` is gitignored and may be absent on a
+fresh clone, in which case `npx vitest`/`npx tsc` die with `ERR_MODULE_NOT_FOUND` before running
+anything — that is a missing install, not a broken test.
+
+| Task | Exact command |
+| :--- | :--- |
+| Dev server (Express + Vite) | `npm run dev` → `tsx server.ts` |
+| Typecheck / lint | `npm run lint` → `tsc --noEmit` (there is **no** ESLint in this repo) |
+| Unit tests | `npm test` → `vitest run` |
+| Tests, watching | `npm run test:watch` |
+| Production build | `npm run build` → `vite build && tsx scripts/prerender-seo.ts && esbuild server.ts …` |
+| Serve the built server | `npm start` → `node dist/server.cjs` |
+| Serverless bundle only | `npm run build:api` → esbuild → `api/index.js` |
+| Route smoke test | `npm run smoke` → `tsx scripts/smoke-serverless.ts` |
+| Preview the static client | `npm run preview` |
+| Clean | `npm run clean` → `rm -rf dist server.js` |
+
+`npm run build` has **three** phases and the middle one is easy to drop: `vite build` (client) →
+`prerender-seo.ts` (per-artwork HTML + `sitemap.xml` into `dist/`) → esbuild (server). Skipping the
+prerender phase yields a build that deploys perfectly and is invisible to search engines.
+
+⚠️ **`vitest.config.ts` sets `testTimeout: 15000`, not the 5 s default, and that is deliberate.**
+These are real-timer tests (`userEvent` drives genuine keystrokes); under load the `environment`
+phase has measured 252–297 s against a nominal ~10 s. "Fixing" a slow test by raising the timeout
+further masks a hang — `ArtworkEditDialog.autosave.test.tsx` shows the preferred pattern (fire rapid
+input synchronously so "rapid" holds by construction). `globals: true` is set, so
+`describe`/`it`/`expect` need no import, and `@` aliases to the repo root.
+
+---
+
+## 3. Verified stack (do not assume otherwise)
 
 | Layer | Actual | Notes |
 | :--- | :--- | :--- |
@@ -32,7 +67,7 @@ art) into this app's Supabase catalog. See `plan/PRD_V3_WAYBACK_DATA_MIGRATION.m
 | Auth | **Supabase Auth** + `public.profiles` roles | admin / editor / viewer |
 | Media | **Supabase Storage** bucket `artwork-images` | thumb/hero/full/lqip WebP renditions |
 | Email | Resend | studio-owned mailer: inquiries **and** all staff invites / password resets |
-| Off-site backup | **Vercel Cron** → **Vercel Blob** | daily dump at `/api/cron/backup`; private objects; see §4 |
+| Off-site backup | **Vercel Cron** → **Vercel Blob** | daily dump at `/api/cron/backup`; private objects; see §5 |
 | **Cloudinary** | **REMOVED** | no package, no routes, no resolution step |
 
 ⚠️ **Cloudinary is fully decommissioned.** `package.json` has **no `cloudinary` dependency**;
@@ -62,7 +97,7 @@ The Supabase Auth mailer is branded separately by pasting the generated files in
 
 ---
 
-## 3. Authoritative environment variables
+## 4. Authoritative environment variables
 
 The code reads these names (see `.env.example`). Do **not** use the generic
 `SUPABASE_URL` / `POSTGRES_URL` names from the old README.
@@ -81,15 +116,30 @@ VRCL_SUPA_SUPABASE_JWT_SECRET=
 RESEND_API_KEY=
 RESEND_EMAIL_DOMAIN=
 ADMIN_EMAIL=                            # inquiry + studio notification recipient
+STUDIO_CC=                              # comma-separated extra recipients; empty disables the cc
+EMAIL_MODE=live|redirect|off            # see the routing trap below — unset infers from VERCEL_ENV
+EMAIL_REDIRECT_TO=                      # REQUIRED whenever EMAIL_MODE=redirect (else mail is dropped)
 SITE_URL=                               # public origin used in email links (falls back to the live site)
 BRAND_LOGO_URL=                         # optional absolute brand-mark URL; defaults to ${SITE_URL}/android-chrome-192x192.png
 ```
 
 Local `.env` and `.env.local` exist (gitignored). **Never print or commit their contents.**
 
+⚠️ **`EMAIL_MODE` is a send switch, not a preference.** `server/lib/emailRouting.ts` resolves it
+once, centrally: `live` delivers to real recipients, `redirect` rewrites every recipient to
+`EMAIL_REDIRECT_TO` and prefixes the subject `[PREVIEW]`, `off` sends nothing. Unset ⇒ inferred from
+`VERCEL_ENV` (`production`→`live`, otherwise `redirect`). **`redirect` with no `EMAIL_REDIRECT_TO`
+SUPPRESSES the message entirely rather than falling back to the real recipient** — so a preview that
+"quietly delivers nothing" is usually this, not a Resend failure. Set it explicitly when testing
+against production data; never rely on the inference. Runbook: `docs/runbooks/email-delivery.md`.
+
+⚠️ **`@google/genai` is in `package.json` but nothing imports it** (verified across `src/`, `server/`,
+`scripts/`). It is not wired to any route or view. Do not assume an AI feature exists because the
+dependency is present — and do not build one on it without asking.
+
 ---
 
-## 4. How to write to the database (the established path)
+## 5. How to write to the database (the established path)
 
 Two supported routes — prefer the first (it is already wired and idempotent):
 
@@ -126,18 +176,30 @@ checksums); a v1 manifest is identified by the *absence* of `formatVersion`, not
 See [`docs/runbooks/database-backup-restore.md`](docs/runbooks/database-backup-restore.md) for the
 rollback procedure and the pre-migration checklist.
 
-### Off-site backup (v2.13.0)
+### Off-site backup (v2.13.0) and the plan digest (v3.2.0)
 
-`vercel.json` schedules one cron job → `GET /api/cron/backup` (`server/routes/cronBackup.ts`) →
-Vercel Blob under `catalog-backups/<stamp>/`. It builds the same dump as above via
-`server/lib/catalogDump.ts`, so the CLI writer and the scheduled writer cannot drift apart.
+`vercel.json` schedules **two** cron jobs, both gated on `CRON_SECRET` (Vercel Cron sends
+`Authorization: Bearer $CRON_SECRET`; unset ⇒ the endpoint answers **503**):
 
-- Gated on `CRON_SECRET` (Vercel Cron sends `Authorization: Bearer $CRON_SECRET`); unset ⇒ **503**.
+| Path | Schedule | Route |
+| :--- | :--- | :--- |
+| `/api/cron/backup` | `43 6 * * *` | `server/routes/cronBackup.ts` → Vercel Blob `catalog-backups/<stamp>/` |
+| `/api/cron/plan-digest` | `17 7 * * *` | `server/routes/cronPlanDigest.ts` → one batched email of new public `plan_items` |
+
+The backup builds the same dump as the CLI via `server/lib/catalogDump.ts`, so the CLI writer and
+the scheduled writer cannot drift apart. The digest is de-duplicated by `plan_items.notified_at`
+(`server/lib/planDigest.ts`), so a row already mailed is never mailed twice.
+
 - Objects are written `access: 'private'` — a dump contains `profiles` emails and collector PII.
 - Retention: keep 14 recent, one per month, never delete anything under 7 days old.
 - ⚠️ Hobby Blob includes **1 GB/month and 2,000 advanced ops**; exceeding either **cuts off Blob
   access for 30 days** rather than billing. One run is ~0.5 MB and ~10 advanced ops. `del()` is free.
-- Hobby cron jobs may only run **once per day**, with per-hour scheduling precision.
+- Hobby cron jobs may only run **once per day**, with per-hour scheduling precision — hence the
+  `43 6`/`17 7` minute offsets rather than `0 6`/`0 7`.
+- ⚠️ **Editing `vercel.json`'s `buildCommand` and `package.json`'s `build` script is one change, not
+  two.** They are separate strings that must stay byte-identical in their `vite build && tsx
+  scripts/prerender-seo.ts && esbuild …` prefix; they have already drifted once. The build writes
+  `api/index.js`, and both `functions["api/index.js"]` and the `/api/(.*)` rewrite bind to it.
 
 ### Local scratch database — and why the Supabase CLI must not run migrations
 
@@ -168,7 +230,7 @@ the filename and requires `<14-digit timestamp>_name.sql`, so every file here (`
 `2026_09_12_…`) collapses to version `2026` and `supabase start` dies with
 `duplicate key value violates unique constraint "schema_migrations_pkey"`. **Do not rename the
 migration files to satisfy the CLI** — the repo runner keys on the full filename, and renaming would
-make every migration look unapplied. This is the two-ledger hazard in §5, confirmed empirically; see
+make every migration look unapplied. This is the two-ledger hazard in §6, confirmed empirically; see
 runbook §7a/§7b.
 
 Docker Desktop installs to a **per-user** path that is not on `PATH`:
@@ -178,7 +240,7 @@ Docker Desktop installs to a **per-user** path that is not on `PATH`:
 
 ---
 
-## 5. Database schema (after all 18 migrations)
+## 6. Database schema (after all 18 migrations)
 
 Core tables: `artworks`, `pages`, `inquiries`, `profiles`, `taxonomies`, `artwork_terms`,
 `settings`, `media_assets`, `artwork_images`, `plan_items`, `plan_releases`.
@@ -259,7 +321,7 @@ Core tables: `artworks`, `pages`, `inquiries`, `profiles`, `taxonomies`, `artwor
 > constraints, indexes, all 20 policies, both `artworks` guard triggers, all 7 functions and all
 > 9 RLS flags match. The exercise found one real gap, since fixed: production had RLS enabled on
 > `schema_migrations` and no migration created that state, so a rebuild left the migration ledger
-> readable with the anon key. `scripts/run-migrations.ts` now enables it — see §4.
+> readable with the anon key. `scripts/run-migrations.ts` now enables it — see §5.
 >
 > ✅ **Line endings are now pinned (2026-09-14).** `.gitattributes` sets `*.sql text eol=lf`, which
 > overrides the machine-global `core.autocrlf = true`. This matters because `pg_get_functiondef`
@@ -307,18 +369,27 @@ it and it is 142 rows now, so that path **is** exercised.
 
 ---
 
-## 6. Repository map (what lives where)
+## 7. Repository map (what lives where)
 
 ```
 ├── server.ts               # slim Express entrypoint (mounts routers, exports app)
 ├── server/
 │   ├── middleware/auth.ts  # resolveCmsUser / requireAuth / requireRole
-│   ├── routes/*.ts         # artworks, pages, taxonomies, settings, media, inquiries, adminUsers, plan
+│   ├── routes/*.ts         # artworks, pages, taxonomies, settings, media, inquiries, adminUsers,
+│   │                       # plan, cronBackup, cronPlanDigest
 │   ├── lib/userAdmin.ts    # pure user-admin rules: state, patches, lockout guards (unit-tested)
 │   ├── lib/planRules.ts    # pure planning-board rules: the two-door asymmetry, the patch
 │   │                       #   allow-list, status transitions, filter parsing (unit-tested)
+│   ├── lib/planDigest.ts   # the batched public-feedback email; de-dupes on plan_items.notified_at
 │   ├── lib/requestGuards.ts # shared public-write abuse controls — honeypot + in-process rate
 │   │                       #   limit; used by POST /api/inquiries AND POST /api/plan/feedback
+│   ├── lib/catalogDump.ts  # the one dump builder — CLI writer and the cron writer share it
+│   ├── lib/blobBackup.ts   # Vercel Blob upload + retention for the scheduled backup
+│   ├── lib/cronAuth.ts     # CRON_SECRET bearer check (fails closed when unset)
+│   ├── lib/emailRouting.ts # EMAIL_MODE live/redirect/off — the single send switch (see §4)
+│   ├── lib/imageRenditions.ts # the shared sharp rendition ladder (thumb/hero/full/lqip)
+│   ├── lib/mediaUpload.ts  # multer → Supabase Storage; shares imageRenditions
+│   ├── lib/webhookSignature.ts # inbound signature verification
 │   ├── emailTemplates.ts   # the branded email shell + BRAND identity (single source of email look)
 │   └── emailService.ts     # Resend integration (inquiries, invites, resets, notices)
 ├── api/                    # Vercel serverless entry (CommonJS — see api/package.json)
@@ -335,17 +406,25 @@ it and it is 142 rows now, so that path **is** exercised.
 │   │                       # adminRoute.ts (hash-route parse), narrative.ts (record → parts),
 │   │                       # dimensions.ts (free-text size → inches)
 │   └── server/db.ts        # pg Pool + Supabase admin client
-├── supabase/migrations/    # 16 idempotent SQL migrations (the baseline sorts first)
+├── supabase/migrations/    # 18 idempotent SQL migrations (the baseline sorts first)
 ├── supabase/email-templates/  # generated Supabase Auth mailer templates + manifest.json
 ├── scripts/                # run-migrations, introspect-schema, backup-catalog, verify-backup,
 │   │                       # verify-media-backup (--out writes an object listing),
-│   │                       # restore-catalog, generate-asset-registry,
-│   │                       # generate-auth-email-templates,
+│   │                       # verify-offsite-backup (the Blob side, not the local dump),
+│   │                       # restore-catalog, snapshot-canonical-catalog, delete-inquiries,
+│   │                       # generate-asset-registry, generate-auth-email-templates,
+│   │                       # generate-source-of-truth-backfill,
 │   │                       # generate-release-log (parses CHANGELOG.md + DEPLOYMENT_LOG.md →
 │   │                       #   src/data/releaseLog.generated.ts; deterministic, no timestamp),
 │   │                       # seed-plan-board (idempotent: one review task per unpublished mural,
 │   │                       #   keyed source_ref = 'artwork:<slug>'; --dry-run supported),
-│   │                       # prerender-seo (Phase 2: per-artwork HTML + sitemap.xml into dist/,
+│   │                       # smoke-serverless (the `npm run smoke` route walker),
+│   │                       # migrate-cloudinary-to-supabase (retired pipeline, kept for
+│   │                       #   provenance — it now imports the shared encoder in server/lib),
+│   │                       # wayback-{extract,link,register,render,stage-sql,taxonomies,
+│   │                       #   recovered-extract}.ts (immutable-archive readers — see §8),
+│   │                       # verify-migration.cjs (standalone node check),
+│   │                       # prerender-seo (per-artwork HTML + sitemap.xml into dist/,
 │   │                       #   runs between `vite build` and the esbuild step — see package.json
 │   │                       #   AND vercel.json, which are two separate strings that must agree)
 │   └── lib/                # pure, offline-tested logic: migrationPlan (ordering/skip),
@@ -359,7 +438,7 @@ it and it is 142 rows now, so that path **is** exercised.
 │                           #   planRules + requestGuards + adminNavGuard + releaseLog)
 ├── data/archive/           # historical manifests + live schema introspection (provenance)
 ├── data/backups/           # gitignored logical dumps (see docs/runbooks/)
-├── wayback/                # archived predecessor sites (v3 migration source — see §7)
+├── wayback/                # archived predecessor sites (v3 migration source — see §8)
 ├── docs/PRD.md             # Admin UI reliability PRD (implemented)
 ├── docs/adr/               # Architecture Decision Records (see ADR 0001)
 ├── docs/runbooks/          # operational procedures (backup/restore, Supabase email branding)
@@ -368,7 +447,7 @@ it and it is 142 rows now, so that path **is** exercised.
 
 ---
 
-## 7. The v3 migration source (read before touching `wayback/`)
+## 8. The v3 migration source (read before touching `wayback/`)
 
 `wayback/` holds two static Wayback snapshots:
 
@@ -386,7 +465,7 @@ Do **not** modify anything inside `wayback/` — it is an immutable archive.
 
 ---
 
-## 8. Conventions & guardrails
+## 9. Conventions & guardrails
 
 ### Roles & permissions (the matrix is authoritative)
 
@@ -447,13 +526,17 @@ re-exports it; never re-declare a role list.
   be probed without a database. It exits non-zero when an endpoint is missing.
 - **Email branding has one source** — `server/emailTemplates.ts`. Studio-sent mail goes through
   Resend; Supabase's own mailer is branded separately by pasting `supabase/email-templates/` into the
-  dashboard (see §2 and the runbook).
+  dashboard (see §3 and the runbook).
 - **Auth redirects must be a bare origin** (no `#`). This is a hash-router SPA and `supabase-js` parses
   the session out of the URL *fragment*; a target like `…/#/admin` silently drops the session. Use
   `bareOrigin()` (`src/lib/authRedirect.ts`) or `buildAuthRedirect()` (`server/lib/userAdmin.ts`), and
   keep `src/lib/authRedirect.ts` as the **first** import in `src/main.tsx`.
 - **`tsc --noEmit` must stay clean** (`npm run lint`); `npm test` (vitest) is offline/zero-token.
-  Suite as of `v3.1.0`: **828 tests across 48 files**.
+  The suite is **53 test files** under `src/` (counted 2026-10-06, after `v3.2.1` added
+  `src/test/navbarLinks.test.tsx`). ⚠️ **The test *count* is not
+  recorded here on purpose** — it was quoted as "828 across 48 files" while the file count was
+  already 52, i.e. the number rotted. Re-derive both after `npm ci`:
+  `npx vitest run --reporter=dot 2>&1 | tail -5` and `find src -name '*.test.*' | wc -l`.
   ⚠️ **vitest transpiles without typechecking** — a type error in `scripts/` or `server/` passes the
   test run and is caught only by `npm run lint`. Run both.
   ⚠️ **There is no CI test job.** The repo has no `.github/workflows/` at all — the five PR checks are
@@ -496,7 +579,7 @@ re-exports it; never re-declare a role list.
   drifted three releases behind once already. The query to rebuild it from real data is in that file.
 - **A release is not finished until the docs it invalidated are fixed.** The checklist, all four of
   which have been skipped at least once: (1) the `AGENTS.md` **header** `Verified against:` line — it
-  read `v2.13.0` through three releases; (2) §5's migration count and §6's file map; (3) §8's suite
+  read `v2.13.0` through three releases; (2) §6's migration count and §7's file map; (3) §9's suite
   count, which is stale the moment it is written; (4) **regenerate the derived artifacts**
   (`npx tsx scripts/generate-release-log.ts`) after the `CHANGELOG.md` edit, because the history
   screen renders the generated file, not the Markdown — a missed regeneration shows the *previous*
@@ -508,5 +591,6 @@ re-exports it; never re-declare a role list.
   `TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill | sed -n 's/^password=//p')`
   then `export GH_TOKEN="$TOKEN"`. Verify with a real write, not a read: a fine-grained PAT can read
   (`ls-remote`, `gh pr list`) and still return `403 Resource not accessible by personal access token`
-  on every push. See the memory notes for this environment's ref-file quirk — ⚠️ **read
-  `GIT_REF_SANDBOX_HAZARD.md` before the session's first ref or checkout operation.**
+  on every push. ⚠️ Note the last line of the original note pointed at `GIT_REF_SANDBOX_HAZARD.md` —
+  **that file is not in this repo** (verified absent), so the ref-sandbox quirk it described lives
+  only in session memory. Treat it as unverified until re-established from a live observation.
