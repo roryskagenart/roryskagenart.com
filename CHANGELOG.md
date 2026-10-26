@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.1] - 2026-10-26
+
+> **"Studio polish" — the theme the studio actually wanted, and dropdowns that load their values.**
+> A **patch**, not the next planned minor: `v3.4.0` is still *Close the loop* and `v3.5.0` is still
+> Phase 5. The version map is untouched — nothing here is part of that program, and renumbering a
+> third time would falsify two roadmap documents for a UI release.
+>
+> **Delivered by commits:** `12ce875` (light default), `456e1eb` (taxonomy-driven dropdowns),
+> `1eed72f` (grouped sidebar).
+>
+> **Validated:** `tsc --noEmit` clean · **916 tests / 57 files** passing · `vite build` OK. The admin
+> screens behind auth were verified by jsdom only, not by screenshot.
+
+### Changed
+
+- **Light is the default theme, on the public site *and* in the admin.** `dark` had been hard-coded
+  in four places. A saved preference still wins, so this changes only what an unset visitor gets.
+  ⚠️ Two of those places are independent readers of the same `localStorage` key — `index.html`'s
+  no-flash boot script and `ThemeContext` — and disagreement between them means a flash on every
+  load, so both moved together, and `ThemeContext.test.tsx` source-parses `index.html` to keep them
+  from drifting. The pre-palette gate now holds **light**, with a `html.palette-booting.dark` rule
+  so a visitor who chose dark still gets no light flash.
+- **The admin sidebar is grouped.** Four named sections replace twelve undifferentiated rows:
+  **Activity** (Inquiries, Planning, Changelog) · **Content** (Catalog, Pages, Media, Taxonomies,
+  Trash) · **General** (Dashboard, Design) · **Settings** (Users, Settings). A section with no rows
+  the current role can open is dropped entirely, so a Viewer sees no empty "Settings" heading.
+  ⚠️ `ADMIN_NAV` stays a **flat** array — `src/test/adminNavGuard.test.ts` regex-parses it and
+  asserts the `minRole` ↔ server-guard relationship in both directions; nesting the rows would have
+  blinded that guard. Sections are `group` metadata plus an `ADMIN_NAV_GROUPS` order/label list.
+- **`medium`, `location` and `edition` are now suggestion fields, not bare text inputs.** They are
+  plain text *columns* with no foreign key, so a strict `<Select>` would make every other value
+  unreachable and rewrite real catalogue data on save. `ui/combobox.tsx` is a native
+  `<input list>` + `<datalist>`: a dropdown of live values that still accepts free text, with no new
+  dependency.
+
+### Added
+
+- **`src/lib/taxonomyOptions.ts`** — `buildArtworkOptionSets()` merges curated taxonomy terms (in
+  `sort_order`) with the values already present in the catalogue (appended alphabetically, de-duped),
+  and `defaultSeriesFor()` seeds a new work with the catalogue's most-used series rather than an
+  arbitrary first term.
+- **`AdminApp` fetches `/api/taxonomies`** (public endpoint) and refetches on navigation, so a term
+  added on the Taxonomies page is live the next time the editor opens. Failures are swallowed — a
+  dead dropdown must not break the catalogue screen.
+- **`CatalogView` takes optional `seriesOptions`**, so a series with no works yet is filterable.
+- Tests: `taxonomyOptions.test.ts` (9) pins the merge in both directions;
+  `ArtworkEditDialog.options.test.tsx` (6) pins the component boundary; `adminNavGroups.test.tsx` (6)
+  pins the declared sections, their render order and that empty ones vanish; `ThemeContext.test.tsx`
+  (6) pins the default and the boot script.
+
+### Fixed
+
+- **The artwork editor's dropdowns did not load their dynamic values.** The series list came from
+  `artworks.gallery_series` alone, so a term created on the Taxonomies page — whose own copy promises
+  "Series values feed the artwork edit form" — never appeared until some artwork already used it.
+  Measured against the live database on 2026-10-26: **4** `series` terms, only **`Neon Americana`**
+  on any artwork, while **`Pop Surrealism & Folklore`** is on **18** works and is *not* a term.
+  Neither a taxonomy-only nor a catalogue-only list is correct, which is why the merge exists.
+- **A stored series that is not in the option list rendered as a blank select** and was dropped on
+  the next save. The editor now unions the record's own value into the list.
+- **The home hero's headline was unreadable in light mode with an empty catalogue.** The masthead
+  copy is `text-white` because `HeroGallerySlider` lays a dark gradient behind it, but the slider
+  renders `null` when it has no artworks, leaving white text on `bg-surface-deep` — light stone in
+  light mode. Found by screenshotting the built site; no test could see it. `HomeLandingView` now
+  holds a dark backdrop when `featuredArtworks` is empty.
+
+---
+
 ## [3.3.0] - 2026-10-26
 
 > **"Home" — the studio's data moves to its own accounts.** This release is infrastructure, not

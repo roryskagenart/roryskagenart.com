@@ -21,6 +21,82 @@ export type { ReleaseLog };
 export const RELEASE_LOG: ReleaseLog = {
   "changelog": [
     {
+      "version": "3.3.1",
+      "date": "2026-10-26",
+      "summary": "\"Studio polish\" — the theme the studio actually wanted, and dropdowns that load their values. A patch, not the next planned minor: v3.4.0 is still Close the loop and v3.5.0 is still Phase 5. The version map is untouched — nothing here is part of that program, and renumbering a third time would falsify two roadmap documents for a UI release. Delivered by commits: 12ce875 (light default), 456e1eb (taxonomy-driven dropdowns), 1eed72f (grouped sidebar). Validated: tsc --noEmit clean · 916 tests / 57 files passing · vite build OK. The admin screens behind auth were verified by jsdom only, not by screenshot.",
+      "sections": [
+        {
+          "heading": "Changed",
+          "category": "Changed",
+          "entries": [
+            {
+              "text": "Light is the default theme, on the public site and in the admin. dark had been hard-coded in four places. A saved preference still wins, so this changes only what an unset visitor gets. ⚠️ Two of those places are independent readers of the same localStorage key — index.html's no-flash boot script and ThemeContext — and disagreement between them means a flash on every load, so both moved together, and ThemeContext.test.tsx source-parses index.html to keep them from drifting. The pre-palette gate now holds light, with a html.palette-booting.dark rule so a visitor who chose dark still gets no light flash.",
+              "details": [],
+              "raw": "**Light is the default theme, on the public site *and* in the admin.** `dark` had been hard-coded\n  in four places. A saved preference still wins, so this changes only what an unset visitor gets.\n  ⚠️ Two of those places are independent readers of the same `localStorage` key — `index.html`'s\n  no-flash boot script and `ThemeContext` — and disagreement between them means a flash on every\n  load, so both moved together, and `ThemeContext.test.tsx` source-parses `index.html` to keep them\n  from drifting. The pre-palette gate now holds **light**, with a `html.palette-booting.dark` rule\n  so a visitor who chose dark still gets no light flash."
+            },
+            {
+              "text": "The admin sidebar is grouped. Four named sections replace twelve undifferentiated rows: Activity (Inquiries, Planning, Changelog) · Content (Catalog, Pages, Media, Taxonomies, Trash) · General (Dashboard, Design) · Settings (Users, Settings). A section with no rows the current role can open is dropped entirely, so a Viewer sees no empty \"Settings\" heading. ⚠️ ADMIN_NAV stays a flat array — src/test/adminNavGuard.test.ts regex-parses it and asserts the minRole ↔ server-guard relationship in both directions; nesting the rows would have blinded that guard. Sections are group metadata plus an ADMIN_NAV_GROUPS order/label list.",
+              "details": [],
+              "raw": "**The admin sidebar is grouped.** Four named sections replace twelve undifferentiated rows:\n  **Activity** (Inquiries, Planning, Changelog) · **Content** (Catalog, Pages, Media, Taxonomies,\n  Trash) · **General** (Dashboard, Design) · **Settings** (Users, Settings). A section with no rows\n  the current role can open is dropped entirely, so a Viewer sees no empty \"Settings\" heading.\n  ⚠️ `ADMIN_NAV` stays a **flat** array — `src/test/adminNavGuard.test.ts` regex-parses it and\n  asserts the `minRole` ↔ server-guard relationship in both directions; nesting the rows would have\n  blinded that guard. Sections are `group` metadata plus an `ADMIN_NAV_GROUPS` order/label list."
+            },
+            {
+              "text": "medium, location and edition are now suggestion fields, not bare text inputs. They are plain text columns with no foreign key, so a strict <Select> would make every other value unreachable and rewrite real catalogue data on save. ui/combobox.tsx is a native <input list> + <datalist>: a dropdown of live values that still accepts free text, with no new dependency.",
+              "details": [],
+              "raw": "**`medium`, `location` and `edition` are now suggestion fields, not bare text inputs.** They are\n  plain text *columns* with no foreign key, so a strict `<Select>` would make every other value\n  unreachable and rewrite real catalogue data on save. `ui/combobox.tsx` is a native\n  `<input list>` + `<datalist>`: a dropdown of live values that still accepts free text, with no new\n  dependency."
+            }
+          ]
+        },
+        {
+          "heading": "Added",
+          "category": "Added",
+          "entries": [
+            {
+              "text": "src/lib/taxonomyOptions.ts — buildArtworkOptionSets() merges curated taxonomy terms (in sort_order) with the values already present in the catalogue (appended alphabetically, de-duped), and defaultSeriesFor() seeds a new work with the catalogue's most-used series rather than an arbitrary first term.",
+              "details": [],
+              "raw": "**`src/lib/taxonomyOptions.ts`** — `buildArtworkOptionSets()` merges curated taxonomy terms (in\n  `sort_order`) with the values already present in the catalogue (appended alphabetically, de-duped),\n  and `defaultSeriesFor()` seeds a new work with the catalogue's most-used series rather than an\n  arbitrary first term."
+            },
+            {
+              "text": "AdminApp fetches /api/taxonomies (public endpoint) and refetches on navigation, so a term added on the Taxonomies page is live the next time the editor opens. Failures are swallowed — a dead dropdown must not break the catalogue screen.",
+              "details": [],
+              "raw": "**`AdminApp` fetches `/api/taxonomies`** (public endpoint) and refetches on navigation, so a term\n  added on the Taxonomies page is live the next time the editor opens. Failures are swallowed — a\n  dead dropdown must not break the catalogue screen."
+            },
+            {
+              "text": "CatalogView takes optional seriesOptions, so a series with no works yet is filterable.",
+              "details": [],
+              "raw": "**`CatalogView` takes optional `seriesOptions`**, so a series with no works yet is filterable."
+            },
+            {
+              "text": "Tests: taxonomyOptions.test.ts (9) pins the merge in both directions; ArtworkEditDialog.options.test.tsx (6) pins the component boundary; adminNavGroups.test.tsx (6) pins the declared sections, their render order and that empty ones vanish; ThemeContext.test.tsx (6) pins the default and the boot script.",
+              "details": [],
+              "raw": "Tests: `taxonomyOptions.test.ts` (9) pins the merge in both directions;\n  `ArtworkEditDialog.options.test.tsx` (6) pins the component boundary; `adminNavGroups.test.tsx` (6)\n  pins the declared sections, their render order and that empty ones vanish; `ThemeContext.test.tsx`\n  (6) pins the default and the boot script."
+            }
+          ]
+        },
+        {
+          "heading": "Fixed",
+          "category": "Fixed",
+          "entries": [
+            {
+              "text": "The artwork editor's dropdowns did not load their dynamic values. The series list came from artworks.gallery_series alone, so a term created on the Taxonomies page — whose own copy promises \"Series values feed the artwork edit form\" — never appeared until some artwork already used it. Measured against the live database on 2026-10-26: 4 series terms, only Neon Americana on any artwork, while Pop Surrealism & Folklore is on 18 works and is not a term. Neither a taxonomy-only nor a catalogue-only list is correct, which is why the merge exists.",
+              "details": [],
+              "raw": "**The artwork editor's dropdowns did not load their dynamic values.** The series list came from\n  `artworks.gallery_series` alone, so a term created on the Taxonomies page — whose own copy promises\n  \"Series values feed the artwork edit form\" — never appeared until some artwork already used it.\n  Measured against the live database on 2026-10-26: **4** `series` terms, only **`Neon Americana`**\n  on any artwork, while **`Pop Surrealism & Folklore`** is on **18** works and is *not* a term.\n  Neither a taxonomy-only nor a catalogue-only list is correct, which is why the merge exists."
+            },
+            {
+              "text": "A stored series that is not in the option list rendered as a blank select and was dropped on the next save. The editor now unions the record's own value into the list.",
+              "details": [],
+              "raw": "**A stored series that is not in the option list rendered as a blank select** and was dropped on\n  the next save. The editor now unions the record's own value into the list."
+            },
+            {
+              "text": "The home hero's headline was unreadable in light mode with an empty catalogue. The masthead copy is text-white because HeroGallerySlider lays a dark gradient behind it, but the slider renders null when it has no artworks, leaving white text on bg-surface-deep — light stone in light mode. Found by screenshotting the built site; no test could see it. HomeLandingView now holds a dark backdrop when featuredArtworks is empty.",
+              "details": [],
+              "raw": "**The home hero's headline was unreadable in light mode with an empty catalogue.** The masthead\n  copy is `text-white` because `HeroGallerySlider` lays a dark gradient behind it, but the slider\n  renders `null` when it has no artworks, leaving white text on `bg-surface-deep` — light stone in\n  light mode. Found by screenshotting the built site; no test could see it. `HomeLandingView` now\n  holds a dark backdrop when `featuredArtworks` is empty."
+            }
+          ]
+        }
+      ],
+      "unreleased": false
+    },
+    {
       "version": "3.3.0",
       "date": "2026-10-26",
       "summary": "\"Home\" — the studio's data moves to its own accounts. This release is infrastructure, not features: the database, the storage bucket and the backup store move from the retired VIO Supabase project to Rory's own, and every place that had memorised the old host is either rewritten or made incapable of defaulting to it. It is deliberately not \"Close the loop\" — that work is now v3.4.0 and Phase 5 is v3.5.0 (see the roadmap renumber below). Delivered by commits: 8c3e280 (registry + browser client repoint), 16e7552 (launch page hero), 2b1e21f (/api/health checks the database).",
@@ -1967,6 +2043,26 @@ export const RELEASE_LOG: ReleaseLog = {
   "deployments": [
     {
       "date": "2026-10-26",
+      "version": "v3.3.0",
+      "url": "https://roryskagenart-45nsodomz-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "9e48086: PR #4 — the Supabase + Blob migration to Rory's own accounts (release/v3.3.0). The database, storage bucket and backup store move from the retired VIO project to vmcnomurydkznkvtlucv; src/data/assetRegistry.ts is regenerated (3,007 URLs, VIO count → 0), 670 rows holding the old host are rewritten, env resolution accepts both naming schemes without ever defaulting the host, and /api/health answers 503 db:\"down\" instead of reporting healthy. No schema change. Annotated tag v3.3.0 points at this commit. ⚠️ Reconciled late — this deploy had no row until the v3.3.1 pass, even though the three pre-v3.3.0 rows below documented its individual commits",
+      "flagged": true
+    },
+    {
+      "date": "2026-10-26",
+      "version": "v3.3.0-preview",
+      "url": "https://roryskagenart-fmdh4swmf-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Preview",
+      "commits": "0ce4caf: release/v3.3.0 preview (PR #4)",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
       "version": "pre-v3.3.0",
       "url": "https://roryskagenart-2di7whq8m-roryskagenart.vercel.app",
       "status": "● Ready",
@@ -2897,8 +2993,8 @@ export const RELEASE_LOG: ReleaseLog = {
     }
   ],
   "diagnostics": {
-    "releases": 24,
-    "deploymentRows": 93,
+    "releases": 25,
+    "deploymentRows": 95,
     "warnings": []
   }
 };

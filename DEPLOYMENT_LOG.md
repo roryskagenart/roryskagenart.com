@@ -31,6 +31,8 @@ This document tracks all production and preview deployments for **`roryskagenart
 
 | Date (UTC) | Version | Deployment URL | Status | Build Time | Target | Associated Commits / Milestone |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026-10-26** | **v3.3.0** | [`roryskagenart-45nsodomz-roryskagenart.vercel.app`](https://roryskagenart-45nsodomz-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `9e48086`: PR #4 — **the Supabase + Blob migration to Rory's own accounts** (`release/v3.3.0`). The database, storage bucket and backup store move from the retired VIO project to `vmcnomurydkznkvtlucv`; `src/data/assetRegistry.ts` is regenerated (3,007 URLs, VIO count → 0), 670 rows holding the old host are rewritten, env resolution accepts both naming schemes without ever defaulting the host, and `/api/health` answers `503 db:"down"` instead of reporting healthy. No schema change. Annotated tag `v3.3.0` points at this commit. ⚠️ **Reconciled late** — this deploy had no row until the `v3.3.1` pass, even though the three `pre-v3.3.0` rows below documented its individual commits |
+| 2026-10-26 | v3.3.0-preview | [`roryskagenart-fmdh4swmf-roryskagenart.vercel.app`](https://roryskagenart-fmdh4swmf-roryskagenart.vercel.app) | `● Ready` | n/a | Preview | `0ce4caf`: `release/v3.3.0` preview (PR #4) |
 | **2026-10-26** | pre-v3.3.0 | [`roryskagenart-2di7whq8m-roryskagenart.vercel.app`](https://roryskagenart-2di7whq8m-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `2b1e21f`: **`/api/health` now proves the database, not just the process.** The endpoint returned `{status:"ok"}` from a deployment whose `getDbPool()` was throwing — so the outage that emptied the catalogue reported green. It now calls `checkDbHealth()`, answers **`503` with `{status:"degraded", db:"down", reason:"database_unreachable"}`** when the pool cannot connect, and logs the underlying error server-side. This is the deploy that restored the site after the 2026-10-26 incident (below) |
 | **2026-10-26** | pre-v3.3.0 | [`roryskagenart-jw5dsnrqi-roryskagenart.vercel.app`](https://roryskagenart-jw5dsnrqi-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `16e7552`: **the launch page hero** (`public/launch/index.html`) repointed from the retired VIO host to `vmcnomurydkznkvtlucv`. The old URL returned `000`; the new one returns `200 image/webp`. This was the last hardcoded VIO reference in a **served** file — the page is static, so the registry fix could not reach it |
 | **2026-10-26** | pre-v3.3.0 | [`roryskagenart-65cckx1hm-roryskagenart.vercel.app`](https://roryskagenart-65cckx1hm-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `8c3e280`: **the asset registry and the browser client** repointed to the live project. `src/data/assetRegistry.ts` regenerated — **3,007 URLs, 1,002 keys / 319 rows / 61 covers, VIO host count 3,007 → 0**, and a normalised diff against the old file is empty, so the change is a pure host swap. This mattered more than a database fix: **the registry is the primary image path** (116 of 205 artworks store a bare filename, resolved through it), so a DB-only scan read clean while the bundle still shipped 3,007 dead URLs. `src/lib/supabase.ts` also lost its retired-host literal and VIO-era anon key |
@@ -204,10 +206,10 @@ deployment to GitHub, so the URL, target, state and commit SHA are all available
 no token beyond the repo PAT. This is how the `v2.16.0`–`v2.17.0` rows were reconciled:
 
 ```bash
-gh api "repos/jadenblack/roryskagenart.com/deployments?per_page=22" \
+gh api "repos/roryskagenart/roryskagenart.com/deployments?per_page=22" \
   --jq '.[] | "\(.id) \(.created_at) \(.environment) \(.sha[0:7])"' |
 while read id created env sha; do
-  url=$(gh api "repos/jadenblack/roryskagenart.com/deployments/$id/statuses" \
+  url=$(gh api "repos/roryskagenart/roryskagenart.com/deployments/$id/statuses" \
         --jq '.[0].environment_url // "-"')
   echo "$created  $env  $sha  $url"
 done
@@ -217,4 +219,4 @@ done
 self-link). ⚠️ A deployment's state can be `inactive` when a later deploy superseded it within the
 same second — record it as-is rather than omitting the row, because a missing production deploy is
 indistinguishable from a deploy that never happened. ⚠️ Resolve an unfamiliar merge SHA with
-`gh api repos/jadenblack/roryskagenart.com/commits/<sha> --jq '.commit.message'` before describing it.
+`gh api repos/roryskagenart/roryskagenart.com/commits/<sha> --jq '.commit.message'` before describing it.

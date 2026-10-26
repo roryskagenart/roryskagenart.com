@@ -4,24 +4,33 @@
 > repo. Read this **first** — it supersedes the historical specs in `/plan`, which contain
 > stale assumptions from earlier Cloudinary-era work.
 >
-> **Verified against:** release `v3.3.0` (2026-10-26) — **the Supabase + Blob migration to Rory's
-> own accounts.** The database moved from the retired VIO project (`orphcusijzkxpxkzapjp`) to
-> **`vmcnomurydkznkvtlucv`**: 41 of 47 tables byte-identical, storage 1,109 objects / 102,627,424 B,
-> Blob 180 objects / 12,359,620 B. `src/data/assetRegistry.ts` was regenerated (**3,007 URLs,
-> 1,002 keys / 319 rows / 61 covers, VIO count → 0**), 670 rows holding the old host were rewritten,
-> env resolution now accepts `VRCL_SUPA_*` **or** the unprefixed `POSTGRES_*`/`SUPABASE_*` names and
-> never defaults the host, and `/api/health` now answers **503 `db:"down"`** when the database is
-> unreachable instead of reporting healthy. **No schema change and no migration** — still **18
-> migration files**, and the schema section remains as re-verified by live introspection against
-> `v3.1.0` (`data/archive/schema_introspection.md`). Prior: `v3.2.1` (2026-10-06) navbar compaction;
+> **Verified against:** release `v3.3.1` (2026-10-26) — **"studio polish": light is the default
+> theme, the artwork editor's dropdowns load from the taxonomies table, and the admin sidebar is
+> grouped.** No schema change, no migration, no API change — still **18 migration files**. A saved
+> theme preference still wins over the new default; ⚠️ the default lives in **two** independent
+> readers of `rory_studio_theme` (`index.html`'s no-flash boot script and `ThemeContext`) and they
+> must change together. `ADMIN_NAV` is **still a flat array** — the sidebar groups are `group`
+> metadata plus `ADMIN_NAV_GROUPS`, because `src/test/adminNavGuard.test.ts` regex-parses it. Suite:
+> **916 tests / 57 files**. Prior: `v3.3.0` (2026-10-26) moved the database, storage and backup
+> store to Rory's own Supabase project (`orphcusijzkxpxkzapjp` → **`vmcnomurydkznkvtlucv`**; 41 of
+> 47 tables byte-identical, storage 1,109 objects / 102,627,424 B, Blob 180 objects / 12,359,620 B),
+> regenerated `src/data/assetRegistry.ts` (**3,007 URLs, 1,002 keys / 319 rows / 61 covers, VIO
+> count → 0**), rewrote 670 rows holding the old host, made env resolution accept `VRCL_SUPA_*`
+> **or** the unprefixed `POSTGRES_*`/`SUPABASE_*` names without ever defaulting the host, and made
+> `/api/health` answer **503 `db:"down"`** when the database is unreachable. The schema section
+> remains as re-verified by live introspection against `v3.1.0`
+> (`data/archive/schema_introspection.md`). Earlier: `v3.2.1` (2026-10-06) navbar compaction;
 > `v3.2.0` ("Group") added 2 migrations (`plan_releases` + `plan_items.notified_at`) and one cron
 > job (`/api/cron/plan-digest`). ⚠️ This header was stale for three releases (`v2.14.0`–`v3.0.0`)
 > once before; it is part of the release checklist — see §9.
 >
-> **Version map:** `v3.1.0` Capture · `v3.2.0` Group · `v3.2.1` navbar · **`v3.3.0` migration** ·
-> **`v3.4.0` *Close the loop* (next)** · `v3.5.0` Phase 5. ⚠️ `plan/ROADMAP_V3*.md` still shows the
-> pre-2026-10-26 mapping (`v3.3.0` = Close, `v3.4.0` = Phase 5) in its historical passages; the
-> current map is the one in `plan/README.md` and here.
+> **Version map:** `v3.1.0` Capture · `v3.2.0` Group · `v3.2.1` navbar · `v3.3.0` migration ·
+> **`v3.3.1` polish** · **`v3.4.0` *Close the loop* (next)** · `v3.5.0` Phase 5. ⚠️ `v3.3.1` is a
+> **patch** on purpose — it is not part of the `v3.1.0`–`v3.4.0` feedback & planning program, and
+> renumbering that program a third time to make room for a UI release would falsify two dated
+> roadmap documents. ⚠️ `plan/ROADMAP_V3*.md` still shows the pre-2026-10-26 mapping (`v3.3.0` =
+> Close, `v3.4.0` = Phase 5) in its historical passages; the current map is the one in
+> `plan/README.md` and here.
 
 ---
 
@@ -415,7 +424,9 @@ it and it is 142 rows now, so that path **is** exercised.
 │   └── emailService.ts     # Resend integration (inquiries, invites, resets, notices)
 ├── api/                    # Vercel serverless entry (CommonJS — see api/package.json)
 ├── src/
-│   ├── components/         # public views + admin/ CMS + ui/ primitives (+ co-located .test.tsx)
+│   ├── components/         # public views + admin/ CMS + ui/ primitives (+ co-located .test.tsx);
+│   │                       #   ui/combobox.tsx is a free-text <input list> + <datalist> for the
+│   │                       #   text columns that have no FK (medium, location, edition)
 │   ├── engine/             # galleryStateEngine.ts (DB-backed reactive store)
 │   ├── data/               # assetRegistry.ts (generated), releaseLog.generated.ts (generated),
 │   │                       # assetResolver.ts, registries
@@ -425,7 +436,9 @@ it and it is 142 rows now, so that path **is** exercised.
 │   │                       #   honeypot field, shared by server read and form render),
 │   │                       # authRedirect.ts (auth hand-off),
 │   │                       # adminRoute.ts (hash-route parse), narrative.ts (record → parts),
-│   │                       # dimensions.ts (free-text size → inches)
+│   │                       # dimensions.ts (free-text size → inches),
+│   │                       # taxonomyOptions.ts (taxonomy terms ∪ in-use values → the artwork
+│   │                       #   editor's dropdowns; `defaultSeriesFor`)
 │   └── server/db.ts        # pg Pool + Supabase admin client
 ├── supabase/migrations/    # 18 idempotent SQL migrations (the baseline sorts first)
 ├── supabase/email-templates/  # generated Supabase Auth mailer templates + manifest.json
@@ -456,7 +469,8 @@ it and it is 142 rows now, so that path **is** exercised.
 │                           # seoPlan (Phase 2: which rows are indexable, canonical/og tags,
 │                           #   sitemap XML, and the loopback-origin refusal)
 ├── src/test/               # vitest suites (incl. migrationSafety + migrationPlan + userAdmin +
-│                           #   planRules + requestGuards + adminNavGuard + releaseLog)
+│                           #   planRules + requestGuards + adminNavGuard + adminNavGroups +
+│                           #   releaseLog)
 ├── data/archive/           # historical manifests + live schema introspection (provenance)
 ├── data/backups/           # gitignored logical dumps (see docs/runbooks/)
 ├── wayback/                # archived predecessor sites (v3 migration source — see §8)
@@ -502,13 +516,16 @@ re-exports it; never re-declare a role list.
 
 **The `minRole` ↔ guard matrix** (every row is asserted by `src/test/adminNavGuard.test.ts`):
 
-| Nav item (`ADMIN_NAV`) | `minRole` | Server guard | Endpoint |
-| :--- | :--- | :--- | :--- |
-| Dashboard, Catalog, Pages | — (all roles) | `requireAuth` / public read | — |
-| **Changelog** | — (all roles) | `requireAuth` | `GET /api/plan/history` |
-| Media, Inquiries, Taxonomies, Design, Trash | `editor` | `requireRole("editor")` | their own routes |
-| **Planning** | `editor` | `requireAuth, requireRole("editor")` | `GET/PATCH/DELETE /api/plan/items` |
-| Users, Settings | `admin` | `requireRole("admin")` | their own routes |
+| Nav item (`ADMIN_NAV`) | Sidebar section | `minRole` | Server guard | Endpoint |
+| :--- | :--- | :--- | :--- | :--- |
+| Dashboard | General | — (all roles) | `requireAuth` / public read | — |
+| Design | General | `editor` | **no route of its own** — the palette is previewed locally and saved through `PUT /api/settings`, which is **`admin`** | — |
+| Catalog, Pages | Content | — (all roles) | `requireAuth` / public read | — |
+| Media, Taxonomies, Trash | Content | `editor` | `requireRole("editor")` | their own routes |
+| Inquiries | Activity | `editor` | `requireRole("editor")` | `GET /api/inquiries` |
+| **Planning** | Activity | `editor` | `requireAuth, requireRole("editor")` | `GET/PATCH/DELETE /api/plan/items` |
+| **Changelog** | Activity | — (all roles) | `requireAuth` | `GET /api/plan/history` |
+| Users, Settings | Settings | `admin` | `requireRole("admin")` | their own routes |
 
 - **A `minRole` on a nav item must match the server guard on the matching API route.** Otherwise a
   Viewer is offered a menu item that answers `403` — the exact defect `v2.11.0` fixed for Inquiries
@@ -552,10 +569,18 @@ re-exports it; never re-declare a role list.
   the session out of the URL *fragment*; a target like `…/#/admin` silently drops the session. Use
   `bareOrigin()` (`src/lib/authRedirect.ts`) or `buildAuthRedirect()` (`server/lib/userAdmin.ts`), and
   keep `src/lib/authRedirect.ts` as the **first** import in `src/main.tsx`.
+- **The theme default lives in TWO places, and they must agree.** `index.html`'s no-flash boot script
+  reads `rory_studio_theme` and paints before the bundle runs; `ThemeContext` reads the same key and
+  owns every later toggle. **Light has been the default since `v3.3.1`** — a stored `'dark'` still
+  wins, so the default only governs an unset visitor. Change one without the other and every load
+  flashes the wrong theme; `src/context/ThemeContext.test.tsx` source-parses `index.html` so the pair
+  cannot drift silently. The pre-palette gate needs **both** backgrounds
+  (`html.palette-booting` light, `html.palette-booting.dark` dark) for the same reason.
 - **`tsc --noEmit` must stay clean** (`npm run lint`); `npm test` (vitest) is offline/zero-token.
-  The suite is **53 test files** under `src/` (counted 2026-10-06, after `v3.2.1` added
-  `src/test/navbarLinks.test.tsx`). ⚠️ **The test *count* is not
-  recorded here on purpose** — it was quoted as "828 across 48 files" while the file count was
+  The suite is **57 test files** under `src/` (counted 2026-10-26, after `v3.3.1` added
+  `src/lib/taxonomyOptions.test.ts`, `src/components/admin/ArtworkEditDialog.options.test.tsx`,
+  `src/test/adminNavGroups.test.tsx` and `src/context/ThemeContext.test.tsx`). ⚠️ **The test *count*
+  is not recorded here on purpose** — it was quoted as "828 across 48 files" while the file count was
   already 52, i.e. the number rotted. Re-derive both after `npm ci`:
   `npx vitest run --reporter=dot 2>&1 | tail -5` and `find src -name '*.test.*' | wc -l`.
   ⚠️ **vitest transpiles without typechecking** — a type error in `scripts/` or `server/` passes the
@@ -606,12 +631,21 @@ re-exports it; never re-declare a role list.
   screen renders the generated file, not the Markdown — a missed regeneration shows the *previous*
   release's notes, and a `[Unreleased]` heading left on a shipped section renders the whole release
   as unreleased. Both defects happened in `v3.1.0` and were found only by reading the screen back.
-- `gh` is not authenticated in this shell and is not on the Bash `PATH`; call it by absolute path
-  (`"/c/Program Files/GitHub CLI/gh.exe"`). ⚠️ The token is **no longer in the `origin` URL** — it was
-  stripped on 2026-09-15. Borrow the one Git Credential Manager already holds instead:
-  `TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill | sed -n 's/^password=//p')`
-  then `export GH_TOKEN="$TOKEN"`. Verify with a real write, not a read: a fine-grained PAT can read
-  (`ls-remote`, `gh pr list`) and still return `403 Resource not accessible by personal access token`
-  on every push. ⚠️ Note the last line of the original note pointed at `GIT_REF_SANDBOX_HAZARD.md` —
-  **that file is not in this repo** (verified absent), so the ref-sandbox quirk it described lives
-  only in session memory. Treat it as unverified until re-established from a live observation.
+- **`gh` is authenticated here — re-verified 2026-10-26, replacing the older note that said it was
+  not.** `gh auth status` reports account **`jadenblack`**, protocol https, scopes
+  `gist, read:org, repo, workflow`, token from the OS keyring (`gho_…`), and `gh` resolves on the
+  Bash `PATH`. Two things that are *not* credentials, despite looking like them: the **GitHub MCP
+  connector returns `403` on writes** (use `gh`), and **`GITHUB_TOKEN` in `.env.local` is not a valid
+  credential** — exporting it yields silently anonymous results, e.g. a "0 open PRs" that means
+  nothing. The token is **not** in the `origin` URL (stripped 2026-09-15), so `git push` needs
+  `gh auth token` when the credential helper is disabled. Verify with a real write, not a read.
+- ⚠️ **In the agent sandbox, never create a local ref — push by SHA.** `rmdir()` on a non-empty
+  directory wrongly succeeds and deletes its contents, so git's parent-directory prune destroys refs
+  it just wrote: `commit`/`fetch`/`tag`/`branch` all exit 0 and the ref is gone. Build commits with
+  `read-tree` → `update-index` → `write-tree` → `commit-tree` and publish with
+  `git push origin <sha>:refs/heads/<branch>`. Never `checkout`/`switch` (working-tree files vanish;
+  recover with `git restore --source=HEAD --worktree -- <path>`). `FETCH_HEAD` is a single slot and
+  is the authoritative base — not `origin/main`, which is often stale. The full recipe lives in the
+  workspace memory dir at `.workbuddy-ai/memory/GIT_REF_SANDBOX_HAZARD.md` — **outside this repo**,
+  which is why an earlier note recorded it as "absent". This is a sandbox artifact, not a machine
+  defect (see `plan/DIAGNOSIS_GIT_REF_PLUMBING_FIX.md`).

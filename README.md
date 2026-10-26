@@ -10,7 +10,7 @@ Official digital gallery, catalog raisonné, and studio management application f
 
 This full-stack application provides both an elegant, collector-grade public presentation and a powerful virtual studio inventory engine.
 
-> **Current release:** `v2.15.0` · **Single vendor:** Supabase (database + storage + auth). Cloudinary has been fully decommissioned.
+> **Current release:** `v3.3.1` · **Single vendor:** Supabase (database + storage + auth). Cloudinary has been fully decommissioned.
 > **Working in this repo (human or AI)?** Read [`AGENTS.md`](./AGENTS.md) first — it is the verified source of truth for the stack, schema, env vars, and write path. See [`plan/README.md`](./plan/README.md) for the status of every planning document.
 
 ---
@@ -229,7 +229,10 @@ npx tsx scripts/run-migrations.ts          # apply all pending
 npx tsx scripts/run-migrations.ts <file>.sql   # apply specific files
 ```
 
-All migrations (applied in filename order):
+**18 migration files** live in `/supabase/migrations` and are applied in filename order. `AGENTS.md`
+§6 is the authoritative per-table description; the v2 lineage below is kept for orientation, and the
+v3 files (`plan_items`, `plan_releases`, the Phase 4 schema extension + backfill + year correction,
+`plan_items.notified_at`) are described in `CHANGELOG.md`.
 
 - `2026_09_v3_media_assets_extend.sql` — extends `media_assets` with `lqip` + `renditions` (jsonb) and an `updated_at` trigger for idempotent upserts.
 - `2026_09_12_cms_v1_profiles_roles.sql` — `public.profiles` (role/is_active keyed to `auth.users`), `on_auth_user_created` signup trigger, admin backfill for existing users, owner/admin RLS policies.
@@ -252,6 +255,9 @@ All migrations (applied in filename order):
 | `settings` | JSONB key/value store (site identity, inquiries, hero) with updated_by audit |
 | `media_assets` | Supabase Storage registry: public_id, url, renditions (thumb/hero/full), lqip, artwork_slug |
 | `pages` | CMS pages: slug, title, markdown content |
+| `artwork_images` | Ordered gallery images per artwork (cover ordering); populated by the `v3.0.0` Phase 4 load |
+| `plan_items` | Studio planning board: ideas / features / bugs / tasks from both the public and staff doors, with status + priority |
+| `plan_releases` | Release grouping for the board: version, status, target date, shipped_at |
 
 Full column definitions for `artworks` and `inquiries` are documented in the migration files and the v2 PRD under `/plan`.
 
