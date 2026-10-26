@@ -1,6 +1,6 @@
 # Deployment Log
 
-This document tracks all production and preview deployments for **`roryskagenart.com`** hosted on **Vercel** (`ventureio/roryskagen`).
+This document tracks all production and preview deployments for **`roryskagenart.com`** hosted on **Vercel** (`roryskagenart/roryskagenart.com`).
 
 ---
 
@@ -8,10 +8,17 @@ This document tracks all production and preview deployments for **`roryskagenart
 
 - **Primary Custom Domain:** [https://roryskagenart.com](https://roryskagenart.com)
 - **Secondary Domain:** [https://www.roryskagenart.com](https://www.roryskagenart.com)
-- **Vercel Production Alias:** [https://roryskagen.vercel.app](https://roryskagen.vercel.app)
-- **Project Console:** `ventureio / roryskagen`
-- **Connected Database:** Supabase PostgreSQL (`supabase-roryskagen` - `orphcusijzkxpxkzapjp.supabase.co`)
-- **Storage Bucket:** `artwork-images` (Supabase Storage)
+- **Vercel Production Alias:** [https://roryskagenart.vercel.app](https://roryskagenart.vercel.app)
+- **Project Console:** `roryskagenart / roryskagenart.com` (Vercel team `roryskagenart`)
+- **Connected Database:** Supabase PostgreSQL (`vmcnomurydkznkvtlucv.supabase.co`) — Rory's project, in use since the 2026-10-26 cutover
+- **Storage Bucket:** `artwork-images` (Supabase Storage, 1,109 objects)
+
+> ⚠️ **Rows dated before 2026-10-26 name the retired `ventureio/roryskagen` project and the
+> `orphcusijzkxpxkzapjp` database.** They are kept as written because that is where those deploys
+> actually ran; they are not rewritten. The `ventureio` Vercel team and its Supabase project are
+> still reachable only from the account that owns them, and nothing in this repo points there any
+> more.
+
 
 ---
 
@@ -24,6 +31,10 @@ This document tracks all production and preview deployments for **`roryskagenart
 
 | Date (UTC) | Version | Deployment URL | Status | Build Time | Target | Associated Commits / Milestone |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026-10-26** | pre-v3.3.0 | [`roryskagenart-2di7whq8m-roryskagenart.vercel.app`](https://roryskagenart-2di7whq8m-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `2b1e21f`: **`/api/health` now proves the database, not just the process.** The endpoint returned `{status:"ok"}` from a deployment whose `getDbPool()` was throwing — so the outage that emptied the catalogue reported green. It now calls `checkDbHealth()`, answers **`503` with `{status:"degraded", db:"down", reason:"database_unreachable"}`** when the pool cannot connect, and logs the underlying error server-side. This is the deploy that restored the site after the 2026-10-26 incident (below) |
+| **2026-10-26** | pre-v3.3.0 | [`roryskagenart-jw5dsnrqi-roryskagenart.vercel.app`](https://roryskagenart-jw5dsnrqi-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `16e7552`: **the launch page hero** (`public/launch/index.html`) repointed from the retired VIO host to `vmcnomurydkznkvtlucv`. The old URL returned `000`; the new one returns `200 image/webp`. This was the last hardcoded VIO reference in a **served** file — the page is static, so the registry fix could not reach it |
+| **2026-10-26** | pre-v3.3.0 | [`roryskagenart-65cckx1hm-roryskagenart.vercel.app`](https://roryskagenart-65cckx1hm-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `8c3e280`: **the asset registry and the browser client** repointed to the live project. `src/data/assetRegistry.ts` regenerated — **3,007 URLs, 1,002 keys / 319 rows / 61 covers, VIO host count 3,007 → 0**, and a normalised diff against the old file is empty, so the change is a pure host swap. This mattered more than a database fix: **the registry is the primary image path** (116 of 205 artworks store a bare filename, resolved through it), so a DB-only scan read clean while the bundle still shipped 3,007 dead URLs. `src/lib/supabase.ts` also lost its retired-host literal and VIO-era anon key |
+| 2026-10-26 | pre-v3.3.0 | [`roryskagenart-4jk160tae-roryskagenart.vercel.app`](https://roryskagenart-4jk160tae-roryskagenart.vercel.app) | `● Ready` | n/a | Preview | `524a16de`: `chore/db-blob-migration` preview — the Supabase + Blob migration branch. Not merged as-is; its content landed through the three production deploys above |
 | **2026-10-06** | **v3.2.1** | [`roryskagenart-mwu5lyrnx-roryskagenart.vercel.app`](https://roryskagenart-mwu5lyrnx-roryskagenart.vercel.app) | `● Ready` | n/a | Production | `bbde738`: PR #1 — **navbar compaction** (`ui/navbar-shop-link`): adds a **Shop** link to the Fourthwall storefront as a real `<a target="_blank" rel="noopener noreferrer">` (the hash router has no `shop` route — a router button would silently render nothing), Home and Dashboard become icon-only buttons (`aria-label`/`title` preserved), "Contact Me" → "Contact". UI-only: no schema, no migration, no API change. New `src/test/navbarLinks.test.tsx` (6 tests). Annotated tag `v3.2.1` points at this commit — **the current `roryskagenart` project production deploy**. ⚠️ Note: `bundleSafety.test.ts` fails pre-existing (4 tests) on both this tree and its parent — reproduced via `git stash`; unrelated to the release |
 | 2026-10-06 | v3.2.1-preview | [`roryskagenart-lulmqawom-roryskagenart.vercel.app`](https://roryskagenart-lulmqawom-roryskagenart.vercel.app) | `● Ready` | n/a | Preview | `bede322`: `ui/navbar-shop-link` preview (PR #1) |
 | **2026-09-16** | post-v3.2.0 | [`roryskagen-mxvkxg6hy-ventureio.vercel.app`](https://roryskagen-mxvkxg6hy-ventureio.vercel.app) | `● Ready` | n/a | Production | `b6d13cb9`: PR #40 — **the password-reset / invite landing fix** (`fix/password-reset-redirect`). Supabase redirects an emailed token to the **bare origin** — the app is a hash-router SPA, so `…/#/admin#access_token=…` would be unparseable and silently drop the session (`src/lib/authRedirect.ts`, `bareOrigin()`). The cost was that a resetting user landed on the public homepage with a live recovery session and **no reset screen**: `PasswordSetupView` renders only inside `AdminApp`, which only renders on `#/admin`. `src/App.tsx` now reads `authHandoff` from `useAuth()` and, while one is pending, sets `window.location.hash = '#/admin'` — so the screen is reached without the user having to find the Dashboard link. **This is the current `ventureio/roryskagen` production deploy**, superseding `8ad53e1e` there. (On the `roryskagenart` project the newest deploy is `bbde738`/`v3.2.1` — see the newest row.) Annotated tag `v3.2.0` does **not** point here — see the `v3.2.0` row below |

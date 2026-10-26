@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.0] - 2026-10-26
+
+> **"Home" — the studio's data moves to its own accounts.** This release is infrastructure, not
+> features: the database, the storage bucket and the backup store move from the retired VIO Supabase
+> project to Rory's own, and every place that had memorised the old host is either rewritten or made
+> incapable of defaulting to it. It is deliberately **not** "Close the loop" — that work is now
+> `v3.4.0` and Phase 5 is `v3.5.0` (see the roadmap renumber below).
+>
+> **Delivered by commits:** `8c3e280` (registry + browser client repoint), `16e7552` (launch page
+> hero), `2b1e21f` (`/api/health` checks the database).
+
+### Changed
+
+- **The Supabase project is Rory's own.** `orphcusijzkxpxkzapjp` (VIO) → **`vmcnomurydkznkvtlucv`**.
+  Data moved and verified on 2026-10-26: **41 of 47 tables byte-identical**, storage **1,109 objects
+  / 102,627,424 B** identical, Vercel Blob **180 objects / 12,359,620 B** identical.
+- **`src/data/assetRegistry.ts` regenerated — 3,007 URLs, 1,002 keys / 319 rows / 61 covers.**
+  ⚠️ **This was the actual breakage, and a database scan could not see it.** 116 of 205 artworks
+  store a **bare filename** and are resolved through this file, so it is the *primary* image path.
+  An exhaustive `information_schema` sweep of 203 columns across 3 schemas read clean while the
+  browser bundle still shipped 3,007 URLs pointing at the retired project. A normalised diff against
+  the previous file is empty — it is a pure host swap, not a re-derivation.
+- **670 database rows hardcoded the retired host** and were rewritten in place: `media_assets.url`
+  (320), `media_assets.thumbnail_url` (320), `artworks.image_url` (30). A dump-and-restore does not
+  fix these — they are data, not schema.
+- **`scripts/generate-asset-registry.ts` no longer has a default project.** It previously fell back
+  to a hardcoded URL, so a missing env var silently generated a registry for the *wrong* project. It
+  now throws: `VRCL_SUPA_SUPABASE_URL (or SUPABASE_URL) must be set — refusing to generate URLs for
+  an unknown project.`
+- **`public/launch/index.html`** — the launch page is static, so the registry fix could not reach it.
+  Its hero was the last hardcoded VIO reference in a **served** file (old URL `000`, new `200 image/webp`).
+
+### Added
+
+- **Both env naming schemes are accepted, `VRCL_SUPA_*` first.** `src/server/db.ts` and
+  `src/lib/supabase.ts` now resolve `VRCL_SUPA_*` → unprefixed `POSTGRES_*` / `SUPABASE_*` /
+  `NEXT_PUBLIC_*`. Neither scheme can leave the server without a database again, and **the host is
+  still never defaulted** — a missing host is a named error listing every accepted variable, not a
+  silent fallback to a project nobody chose.
+- **`/api/health` now proves the database, not just the process.** It answers **`503`** with
+  `{status:"degraded", db:"down", reason:"database_unreachable"}` when the pool cannot connect. This
+  closes the failure mode that made the October outage invisible: the endpoint reported healthy from
+  a deployment whose `getDbPool()` was throwing, and the UI renders a failed fetch as **0 artworks**,
+  not as an error.
+- **`.env.example` rewritten against code-verified names only** — 20 keys, all empty, grouped by
+  provider. It previously documented `ADMIN_INITIAL_PASSWORD`, which **no code reads**.
+- **`.env` and `.env.local` regrouped by provider** with a comment on every key, and an inert
+  `ARCHIVED` section that preserves the commented-out VIO `VRCL_SUPA_*` block verbatim rather than
+  deleting it. Verified **parse-equivalent** to the originals (30 and 20 keys, zero value changes)
+  and idempotent on re-run.
+- **Cloudinary is retained on purpose.** The catalogue left it in v3.1/v3.2 and no code reads the
+  credentials, but the account is active and is being kept for a different future use. It now has
+  its own documented provider section instead of being listed as dead.
+
+### Fixed
+
+- **`scripts/verify-media-backup.ts` had a retired-host fallback.** The script that *verifies media
+  backups* would have defaulted to the VIO project and reported a clean backup of the wrong bucket.
+  It now throws when unset and accepts both naming schemes.
+- **`AGENTS.md`** — the database row named `vmcnomlucv` (a truncation, not a project) and §4's env
+  block listed a set that did not match the code. Both now match the code exactly.
+- **`DEPLOYMENT_LOG.md`** — the header named the retired `ventureio/roryskagen` project, a dead
+  `roryskagen.vercel.app` alias and the VIO database. Rows dated before the cutover are left as
+  written, because that is where those deploys actually ran, with a note saying so.
+
+### Notes
+
+- ⚠️ **Vercel snapshots env per deployment.** The Supabase integration had detached
+  (`integrationIds: []`), so the seven server-side `VRCL_SUPA_*` names were gone from Production —
+  yet the already-running deployment kept working, and the breakage only appeared at the **next
+  build**. After any env or integration change: redeploy, then require `/api/health` → `db:"up"`.
+- ⚠️ **The version was reassigned, not skipped.** `plan/ROADMAP_V3*.md` had reserved `v3.3.0` for
+  C7 *"Close the loop"* (tasks 27–31) and `v3.4.0` for Phase 5. This migration took `v3.3.0`, so
+  **Close → `v3.4.0`** and **Phase 5 → `v3.5.0`**, and both roadmap documents were edited to agree.
+  Nothing had shipped against the old numbers.
+- One synthetic test fixture (`src/test/mediaReconcile.test.ts`) still builds URLs from the retired
+  host string. It is a literal used to compare strings, never fetched, and is left as-is.
+
+---
+
 ## [3.2.1] - 2026-10-06
 
 ### Changed
@@ -337,7 +417,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > export of the live WordPress 6.4.2 site, not a scrape**. It supersedes
 > `centraltexasmurals.com-v1` for the mural side: same 61 artworks, **+1 record** (`capstar-mural`),
 > and **15× the media** (7 images → 168). See
-> [`plan/RECON_V3_0_0_RECOVERED_SOURCE.md`](../plan/RECON_V3_0_0_RECOVERED_SOURCE.md).
+> [`plan/RECON_V3_0_0_RECOVERED_SOURCE.md`](plan/RECON_V3_0_0_RECOVERED_SOURCE.md).
 
 ### Fixed
 
@@ -427,7 +507,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **The media upload ladder, plus a dialog spacing fix.** No schema change, no new vendor, no CDN.
 >
-> Scope is **S2 only** from [`plan/PRD_V2_16_MEDIA_PIPELINE.md`](../plan/PRD_V2_16_MEDIA_PIPELINE.md)
+> Scope is **S2 only** from [`plan/PRD_V2_16_MEDIA_PIPELINE.md`](plan/PRD_V2_16_MEDIA_PIPELINE.md)
 > — that document's own §9 recommendation. **S1** (deleting the 151 unreferenced `original.*`
 > masters), **S3** (`Cache-Control` audit of the 605 existing objects) and **S5** (measuring egress
 > once) are **deferred to v3.0.0**. S1 is the only irreversible item in the PRD and the bucket is at

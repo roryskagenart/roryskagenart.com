@@ -4,14 +4,24 @@
 > repo. Read this **first** — it supersedes the historical specs in `/plan`, which contain
 > stale assumptions from earlier Cloudinary-era work.
 >
-> **Verified against:** release `v3.2.1` (2026-10-06) — navbar compaction: a Shop link to the
-> Fourthwall storefront (a real anchor, not a hash-router button), Home/Dashboard as icon-only
-> buttons with labels preserved for AT, "Contact Me" → "Contact". UI-only: no schema, API, or
-> dependency change; `v3.2.0` ("Group", 2026-09-16) added 2 migrations (`plan_releases` +
-> `plan_items.notified_at`) and one cron job (`/api/cron/plan-digest`), bringing the repo to
-> **18 migration files**. The schema section was last re-verified by live introspection against
-> `v3.1.0` — see `data/archive/schema_introspection.md`. ⚠️ This header was stale for three
-> releases (`v2.14.0`–`v3.0.0`) before that; it is part of the release checklist — see §9.
+> **Verified against:** release `v3.3.0` (2026-10-26) — **the Supabase + Blob migration to Rory's
+> own accounts.** The database moved from the retired VIO project (`orphcusijzkxpxkzapjp`) to
+> **`vmcnomurydkznkvtlucv`**: 41 of 47 tables byte-identical, storage 1,109 objects / 102,627,424 B,
+> Blob 180 objects / 12,359,620 B. `src/data/assetRegistry.ts` was regenerated (**3,007 URLs,
+> 1,002 keys / 319 rows / 61 covers, VIO count → 0**), 670 rows holding the old host were rewritten,
+> env resolution now accepts `VRCL_SUPA_*` **or** the unprefixed `POSTGRES_*`/`SUPABASE_*` names and
+> never defaults the host, and `/api/health` now answers **503 `db:"down"`** when the database is
+> unreachable instead of reporting healthy. **No schema change and no migration** — still **18
+> migration files**, and the schema section remains as re-verified by live introspection against
+> `v3.1.0` (`data/archive/schema_introspection.md`). Prior: `v3.2.1` (2026-10-06) navbar compaction;
+> `v3.2.0` ("Group") added 2 migrations (`plan_releases` + `plan_items.notified_at`) and one cron
+> job (`/api/cron/plan-digest`). ⚠️ This header was stale for three releases (`v2.14.0`–`v3.0.0`)
+> once before; it is part of the release checklist — see §9.
+>
+> **Version map:** `v3.1.0` Capture · `v3.2.0` Group · `v3.2.1` navbar · **`v3.3.0` migration** ·
+> **`v3.4.0` *Close the loop* (next)** · `v3.5.0` Phase 5. ⚠️ `plan/ROADMAP_V3*.md` still shows the
+> pre-2026-10-26 mapping (`v3.3.0` = Close, `v3.4.0` = Phase 5) in its historical passages; the
+> current map is the one in `plan/README.md` and here.
 
 ---
 
@@ -63,7 +73,7 @@ input synchronously so "rapid" holds by construction). `globals: true` is set, s
 | :--- | :--- | :--- |
 | Client | **React 19**, Vite 6, Tailwind **v4**, shadcn/ui (Radix) | `AdminApp` is `React.lazy`-loaded (`src/App.tsx`) |
 | Backend | Express 4, **modularized** under `server/` | `server.ts` is a slim entrypoint |
-| Database | **Supabase PostgreSQL** (`orphcusijzkxpxkzapjp`) | single source of truth |
+| Database | **Supabase PostgreSQL** (`vmcnomurydkznkvtlucv`) | single source of truth |
 | Auth | **Supabase Auth** + `public.profiles` roles | admin / editor / viewer |
 | Media | **Supabase Storage** bucket `artwork-images` | thumb/hero/full/lqip WebP renditions |
 | Email | Resend | studio-owned mailer: inquiries **and** all staff invites / password resets |
@@ -99,28 +109,39 @@ The Supabase Auth mailer is branded separately by pasting the generated files in
 
 ## 4. Authoritative environment variables
 
-The code reads these names (see `.env.example`). Do **not** use the generic
-`SUPABASE_URL` / `POSTGRES_URL` names from the old README.
+`VRCL_SUPA_*` is the canonical prefix and the code prefers it. A Vercel Supabase integration
+writes the unprefixed `SUPABASE_*` / `POSTGRES_*` names instead; the code accepts **both**
+(`VRCL_SUPA_*` first, unprefixed as fallback), so a pasted integration export still runs — but
+prefer `VRCL_SUPA_*`. The **host is never defaulted**: a hardcoded project URL silently points at
+the wrong database, which is how the 2026-10 cutover went unnoticed.
 
 ```bash
-# Supabase / PostgreSQL (Vercel integration naming)
+# Supabase / PostgreSQL (canonical names)
 NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL=
+NEXT_PUBLIC_VRCL_SUPA_SUPABASE_ANON_KEY=      # read by scripts/prerender-seo.ts
 NEXT_PUBLIC_VRCL_SUPA_SUPABASE_PUBLISHABLE_KEY=
+VRCL_SUPA_SUPABASE_URL=                       # server-side admin client
 VRCL_SUPA_SUPABASE_ANON_KEY=
-VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY=
-VRCL_SUPA_POSTGRES_PRISMA_URL=          # preferred connection string
-VRCL_SUPA_POSTGRES_URL_NON_POOLING=
-VRCL_SUPA_SUPABASE_JWT_SECRET=
+VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY=          # server only — never expose
+VRCL_SUPA_POSTGRES_PRISMA_URL=                # preferred connection string (pooled)
+VRCL_SUPA_POSTGRES_URL=                       # fallback connection string
+VRCL_SUPA_POSTGRES_URL_NON_POOLING=           # required by pg_dump / migration scripts
+VRCL_SUPA_SUPABASE_JWT_SECRET=                # ⚠️ read by no code path — reserved, not required
 
 # Email
 RESEND_API_KEY=
 RESEND_EMAIL_DOMAIN=
-ADMIN_EMAIL=                            # inquiry + studio notification recipient
-STUDIO_CC=                              # comma-separated extra recipients; empty disables the cc
-EMAIL_MODE=live|redirect|off            # see the routing trap below — unset infers from VERCEL_ENV
-EMAIL_REDIRECT_TO=                      # REQUIRED whenever EMAIL_MODE=redirect (else mail is dropped)
-SITE_URL=                               # public origin used in email links (falls back to the live site)
-BRAND_LOGO_URL=                         # optional absolute brand-mark URL; defaults to ${SITE_URL}/android-chrome-192x192.png
+RESEND_WEBHOOK_SECRET=                        # verifies POST /api/email/webhook
+ADMIN_EMAIL=                                  # inquiry + studio notification recipient
+STUDIO_CC=                                    # comma-separated extra recipients; empty disables the cc
+EMAIL_MODE=live|redirect|off                  # see the routing trap below — unset infers from VERCEL_ENV
+EMAIL_REDIRECT_TO=                            # REQUIRED whenever EMAIL_MODE=redirect (else mail is dropped)
+SITE_URL=                                     # public origin used in email links (falls back to the live site)
+BRAND_LOGO_URL=                               # optional absolute brand-mark URL; defaults to ${SITE_URL}/android-chrome-192x192.png
+
+# Scheduled backup (Vercel Cron -> /api/cron/backup -> Vercel Blob)
+CRON_SECRET=                                  # fails closed when unset
+BLOB_READ_WRITE_TOKEN=                        # blob store token; platform token on Vercel
 ```
 
 Local `.env` and `.env.local` exist (gitignored). **Never print or commit their contents.**
