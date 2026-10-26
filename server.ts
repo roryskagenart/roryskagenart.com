@@ -59,8 +59,24 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // -------------------------------------------------------------
 
 // Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+// Liveness AND readiness. This used to return a bare `{status:"ok"}` without touching the
+// database, so it reported healthy while every data endpoint was 500ing — which is how the
+// 2026-10 environment loss went unnoticed until a visitor reported empty counts. The database
+// is the one dependency the site cannot serve without, so it belongs in this probe.
+app.get("/api/health", async (req, res) => {
+  const db = await checkDbHealth();
+  const body = {
+    status: db.connected ? "ok" : "degraded",
+    db: db.connected ? "up" : "down",
+    time: new Date().toISOString(),
+  };
+  if (!db.connected) {
+    // Public endpoint: the driver's message can name the host, the role and the auth failure,
+    // so it goes to the logs rather than the response body.
+    console.error("[health] database unreachable:", db.error);
+    return res.status(503).json({ ...body, reason: "database_unreachable" });
+  }
+  return res.json(body);
 });
 
 // Database connection status (editor+)
