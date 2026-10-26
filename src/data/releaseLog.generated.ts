@@ -2043,6 +2043,26 @@ export const RELEASE_LOG: ReleaseLog = {
   "deployments": [
     {
       "date": "2026-10-26",
+      "version": "v3.3.1",
+      "url": "https://roryskagenart-4bj89c5js-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "5aa1d06: PR #5 — studio polish (release/v3.3.1). Light becomes the default theme on the public site and in the admin (a saved preference still wins), the artwork editor's dropdowns are fed by the taxonomies table merged with the values already in use, and the admin sidebar is grouped into Activity / Content / General / Settings. UI and docs only: no schema change, no migration, no API change. Annotated tag v3.3.1 points at this commit. Verified live: /api/health → {\"status\":\"ok\",\"db\":\"up\"}, and roryskagenart.com serves class=\"light h-full\" with the new boot script",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
+      "version": "v3.3.1-preview",
+      "url": "https://roryskagenart-5qpl58eb6-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Preview",
+      "commits": "5caa3b0: release/v3.3.1 preview (PR #5) — the deploy that proved the release builds before the merge",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
       "version": "v3.3.0",
       "url": "https://roryskagenart-45nsodomz-roryskagenart.vercel.app",
       "status": "● Ready",
@@ -2994,7 +3014,7 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "diagnostics": {
     "releases": 25,
-    "deploymentRows": 95,
+    "deploymentRows": 97,
     "warnings": []
   }
 };
