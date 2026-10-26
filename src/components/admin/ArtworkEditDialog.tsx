@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -8,6 +8,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select } from '../ui/select';
+import { Combobox } from '../ui/combobox';
 import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
 import { ArtworkRecord } from '../../types';
@@ -17,6 +18,15 @@ interface ArtworkEditDialogProps {
   open: boolean;
   artwork: ArtworkRecord | null; // null = create mode
   seriesOptions: string[];
+  /**
+   * Series a NEW work starts on (the catalog's most-used one). Defaults to the
+   * first option so the prop stays optional for callers that don't care.
+   */
+  defaultSeries?: string;
+  /** Taxonomy-driven suggestions for the free-text fields below. */
+  mediumOptions?: string[];
+  locationOptions?: string[];
+  editionOptions?: string[];
   onClose: () => void;
   onSave: (
     payload: Partial<ArtworkRecord> & {
@@ -48,6 +58,10 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
   open,
   artwork,
   seriesOptions,
+  defaultSeries,
+  mediumOptions = [],
+  locationOptions = [],
+  editionOptions = [],
   onClose,
   onSave,
   onCreated,
@@ -85,6 +99,18 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
   // Slug this dialog instance was initialized with (form-reset guard).
   const initSlugRef = useRef<string | null | undefined>(undefined);
 
+  /**
+   * Series is a controlled picklist, so a value the option list does not contain
+   * would render as a blank select — and the next save would silently drop it.
+   * Union in the record's own value so legacy/drifted data stays visible.
+   */
+  const seriesSelectOptions = useMemo(() => {
+    const values = [...seriesOptions];
+    const current = form.gallery_series.trim();
+    if (current && !values.includes(current)) values.push(current);
+    return values.map((value) => ({ value, label: value }));
+  }, [seriesOptions, form.gallery_series]);
+
   const formJson = JSON.stringify(form);
   const isDirty = formJson !== savedJsonRef.current;
   // Autosave applies to persisted drafts only: create-mode needs an explicit
@@ -113,7 +139,7 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
       dimensions: artwork?.dimensions || '',
       price: artwork?.price || '',
       status: artwork?.status || 'Available',
-      gallery_series: artwork?.gallery_series || seriesOptions[0] || '',
+      gallery_series: artwork?.gallery_series || defaultSeries || seriesOptions[0] || '',
       edition: artwork?.edition || 'Original Painting',
       location: artwork?.location || '',
       image_url: artwork?.imageUrl || artwork?.featured_image || '',
@@ -124,6 +150,20 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
     savedJsonRef.current = JSON.stringify(initial);
     setAutosave('idle');
   }, [open, slugKey]);
+
+  /**
+   * Create mode only: the taxonomy fetch may land after the dialog opened, so a
+   * new work can start with no series while the curated list is still in flight.
+   * Adopt the default once it arrives — and move the dirty baseline with it, so
+   * an untouched "New artwork" dialog still closes without a discard prompt.
+   */
+  useEffect(() => {
+    if (!open || artwork || !defaultSeries || form.gallery_series) return;
+    const next = { ...form, gallery_series: defaultSeries };
+    setForm(next);
+    savedJsonRef.current = JSON.stringify(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, artwork, defaultSeries, form.gallery_series]);
 
   const set = (key: keyof typeof form, value: string | boolean) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -319,7 +359,13 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="aw-medium">Medium</Label>
-              <Input id="aw-medium" value={form.medium} onChange={(e) => set('medium', e.target.value)} />
+              <Combobox
+                id="aw-medium"
+                value={form.medium}
+                onChange={(e) => set('medium', e.target.value)}
+                options={mediumOptions}
+                placeholder="Acrylic on Canvas"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="aw-dimensions">Dimensions</Label>
@@ -354,16 +400,29 @@ export const ArtworkEditDialog: React.FC<ArtworkEditDialogProps> = ({
                 id="aw-series"
                 value={form.gallery_series}
                 onChange={(e) => set('gallery_series', e.target.value)}
-                options={seriesOptions.map((s) => ({ value: s, label: s }))}
+                options={seriesSelectOptions}
+                placeholder="Select a series…"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="aw-edition">Edition</Label>
-              <Input id="aw-edition" value={form.edition} onChange={(e) => set('edition', e.target.value)} />
+              <Combobox
+                id="aw-edition"
+                value={form.edition}
+                onChange={(e) => set('edition', e.target.value)}
+                options={editionOptions}
+                placeholder="Original Painting"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="aw-location">Location</Label>
-              <Input id="aw-location" value={form.location} onChange={(e) => set('location', e.target.value)} />
+              <Combobox
+                id="aw-location"
+                value={form.location}
+                onChange={(e) => set('location', e.target.value)}
+                options={locationOptions}
+                placeholder="Austin Studio"
+              />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Featured image</Label>
