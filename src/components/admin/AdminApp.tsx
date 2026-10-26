@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { GalleryAppEngineInstance } from '../../engine/galleryStateEngine';
 import { api } from '../../lib/adminApi';
 import { parseAdminPath } from '../../lib/adminRoute';
+import { buildArtworkOptionSets, defaultSeriesFor, type TaxonomyTerm } from '../../lib/taxonomyOptions';
 import type { PlanBoardSummary } from '../../lib/planTypes';
 import { UserRole } from '../../types';
 
@@ -41,6 +42,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
    * reads 0 until you visit Inquiries. Not repeated here.)
    */
   const [planTriageCount, setPlanTriageCount] = useState(0);
+  /**
+   * Taxonomy terms for the artwork editor's dropdowns.
+   *
+   * `GET /api/taxonomies` is public, so this is safe for a viewer's session too —
+   * but it is only fetched once a session exists, because the editor that uses
+   * it is unreachable before that.
+   */
+  const [taxonomyTerms, setTaxonomyTerms] = useState<TaxonomyTerm[]>([]);
   const [flash, setFlash] = useState<string | null>(null);
 
   const engineVersion = useMemo(
@@ -112,6 +121,30 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
       cancelled = true;
     };
   }, [canManageCatalog, isAuthenticated, path]);
+
+  /**
+   * Taxonomy terms feed the artwork editor's dropdowns (`buildArtworkOptionSets`).
+   * Re-fetched on navigation so a term added on the Taxonomies page shows up the
+   * next time the editor opens, and swallowed on failure: a dead dropdown must
+   * not break the catalog screen.
+   */
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setTaxonomyTerms([]);
+      return;
+    }
+    let cancelled = false;
+    api<{ terms?: TaxonomyTerm[] }>('/api/taxonomies')
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.terms)) setTaxonomyTerms(data.terms);
+      })
+      .catch(() => {
+        if (!cancelled) setTaxonomyTerms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, subPath]);
 
   const showLogin = !isLoading && !isAuthenticated;
 
@@ -254,9 +287,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
     }
   };
 
-  const seriesOptions = Array.from(
-    new Set(artworks.map((a) => a.gallery_series).filter(Boolean) as string[])
-  ).sort();
+  // Curated taxonomy terms + values already in the catalog → one option list per
+  // dropdown. `seriesOptions` stays a plain string[] because the editor's prop
+  // contract and its tests are written in those terms.
+  const optionSets = buildArtworkOptionSets(taxonomyTerms, artworks);
+  const seriesOptions = optionSets.series;
+  const newArtworkSeries = defaultSeriesFor(optionSets.series, artworks);
 
   // ------- Route resolution -------
   // Each guarded case mirrors the server's own `requireRole` on the matching
@@ -278,6 +314,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
           <CatalogView
             artworks={artworks}
             role={role}
+            seriesOptions={seriesOptions}
             onSelectArtwork={(slug) => onNavigate(`/artwork/${slug}`)}
             onToggleHero={handleToggleHero}
             onToggleEnabled={handleToggleEnabled}
@@ -322,6 +359,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
           <CatalogView
             artworks={artworks}
             role={role}
+            seriesOptions={seriesOptions}
             onRestore={handleRestore}
             onPermanentDelete={handlePermanentDelete}
             onSetDraft={canManageCatalog ? handleSetDraft : undefined}
@@ -359,6 +397,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({ path, onNavigate }) => {
         open={editDialogOpen}
         artwork={artworkForEdit}
         seriesOptions={seriesOptions}
+        defaultSeries={newArtworkSeries}
+        mediumOptions={optionSets.medium}
+        locationOptions={optionSets.location}
+        editionOptions={optionSets.edition}
         onClose={() => setEditDialogOpen(false)}
         onSave={handleSaveArtwork}
       />

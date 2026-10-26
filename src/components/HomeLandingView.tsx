@@ -108,6 +108,14 @@ export const HomeLandingView: React.FC<HomeLandingViewProps> = ({
         aria-label="The studio of Rory Skagen — Austin, Texas"
       >
         <HeroGallerySlider artworks={featuredArtworks} />
+        {/* The masthead copy is white because the slider's gradient wash sits
+            behind it. With no slides to show, `HeroGallerySlider` renders null
+            and that white copy would land on the section's own surface — which
+            is a light stone in the (now default) light theme, i.e. invisible.
+            Hold the dark backdrop explicitly so the headline reads either way. */}
+        {featuredArtworks.length === 0 && (
+          <div className="absolute inset-0 bg-[#17171b]" aria-hidden="true" />
+        )}
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 md:pt-24 pb-12 sm:pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

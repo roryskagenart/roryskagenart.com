@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark h-full">
+<html lang="en" class="light h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#2B2B2E" />
+    <meta name="theme-color" content="#e3e1da" />
     <meta property="og:title" content="Rory Skagen Studio | Art Works" />
     <meta property="og:description" content="Official fine art gallery and studio portfolio for artist Rory Skagen." />
     <meta property="og:image" content="/android-chrome-512x512.png" />
@@ -39,9 +39,10 @@
        */
       (function () {
         try {
-          // Mode: mirror ThemeContext's localStorage key.
-          var mode = 'dark';
-          try { mode = localStorage.getItem('rory_studio_theme') === 'light' ? 'light' : 'dark'; } catch (e) {}
+          // Mode: mirror ThemeContext's localStorage key. Light is the studio
+          // default; only an explicit saved 'dark' switches it.
+          var mode = 'light';
+          try { mode = localStorage.getItem('rory_studio_theme') === 'dark' ? 'dark' : 'light'; } catch (e) {}
           var root = document.documentElement;
           root.classList.remove('dark', 'light');
           root.classList.add(mode);
@@ -112,9 +113,14 @@
       })();
     </script>
     <style>
-      /* Pre-palette gate: hold the shell in the default dark background so
-         first paint never flashes the light default before custom colors land. */
+      /* Pre-palette gate: hold the shell in the default LIGHT background so
+         first paint never flashes the wrong shell color before custom colors
+         land. Dark mode gets its own gate rule below, keyed on the class the
+         boot script sets from the saved preference. */
       html.palette-booting, html.palette-booting body {
+        background-color: #e3e1da !important;
+      }
+      html.palette-booting.dark, html.palette-booting.dark body {
         background-color: #17171b !important;
       }
       html.palette-booting #root { visibility: hidden; }

@@ -30,10 +30,22 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import type { UserRole } from '../../types';
 
+export type AdminNavGroupId = 'activity' | 'content' | 'general' | 'settings';
+
+/** Sidebar sections, in render order. A group with no permitted items is hidden. */
+export const ADMIN_NAV_GROUPS: { id: AdminNavGroupId; label: string }[] = [
+  { id: 'activity', label: 'Activity' },
+  { id: 'content', label: 'Content' },
+  { id: 'general', label: 'General' },
+  { id: 'settings', label: 'Settings' },
+];
+
 export interface AdminNavItem {
   route: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Sidebar section this item renders under. */
+  group: AdminNavGroupId;
   minRole?: UserRole;
   badgeCount?: number;
 }
@@ -64,24 +76,31 @@ export interface AdminNavItem {
  * than surfacing as a 403 in front of the studio.
  */
 export const ADMIN_NAV: AdminNavItem[] = [
-  { route: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { route: '/admin/catalog', label: 'Catalog', icon: ImageIcon },
-  { route: '/admin/pages', label: 'Pages', icon: Files },
-  { route: '/admin/inquiries', label: 'Inquiries', icon: Inbox, minRole: 'editor' },
-  { route: '/admin/media', label: 'Media', icon: FolderOpen, minRole: 'editor' },
-  { route: '/admin/taxonomies', label: 'Taxonomies', icon: Tags, minRole: 'editor' },
-  { route: '/admin/design', label: 'Design', icon: Palette, minRole: 'editor' },
-  // v3.1.0. Two items rather than one with tabs: they differ in access level (all roles vs
-  // editor+) and in data source (a generated artifact vs the database), and `ADMIN_NAV` is a flat
-  // list whose badge lookup keys on the route.
+  // Activity — what happened / what needs attention.
+  { route: '/admin/inquiries', label: 'Inquiries', icon: Inbox, group: 'activity', minRole: 'editor' },
+  { route: '/admin/planning', label: 'Planning', icon: ListChecks, group: 'activity', minRole: 'editor' },
+  // v3.1.0. Changelog and Planning are two items rather than one with tabs: they differ in access
+  // level (all roles vs editor+) and in data source (a generated artifact vs the database), and the
+  // badge lookup keys on the route.
   //
   // Changelog carries no `minRole` because `GET /api/plan/history` is `requireAuth` only — the
   // release history is static and already public in the repo's own git history.
-  { route: '/admin/changelog', label: 'Changelog', icon: History },
-  { route: '/admin/planning', label: 'Planning', icon: ListChecks, minRole: 'editor' },
-  { route: '/admin/users', label: 'Users', icon: Users, minRole: 'admin' },
-  { route: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'admin' },
-  { route: '/admin/trash', label: 'Trash', icon: Trash2, minRole: 'editor' },
+  { route: '/admin/changelog', label: 'Changelog', icon: History, group: 'activity' },
+
+  // Content — the catalog and everything hanging off it.
+  { route: '/admin/catalog', label: 'Catalog', icon: ImageIcon, group: 'content' },
+  { route: '/admin/pages', label: 'Pages', icon: Files, group: 'content' },
+  { route: '/admin/media', label: 'Media', icon: FolderOpen, group: 'content', minRole: 'editor' },
+  { route: '/admin/taxonomies', label: 'Taxonomies', icon: Tags, group: 'content', minRole: 'editor' },
+  { route: '/admin/trash', label: 'Trash', icon: Trash2, group: 'content', minRole: 'editor' },
+
+  // General — the landing screen and the studio-wide look.
+  { route: '/admin', label: 'Dashboard', icon: LayoutDashboard, group: 'general' },
+  { route: '/admin/design', label: 'Design', icon: Palette, group: 'general', minRole: 'editor' },
+
+  // Settings — accounts and configuration.
+  { route: '/admin/users', label: 'Users', icon: Users, group: 'settings', minRole: 'admin' },
+  { route: '/admin/settings', label: 'Settings', icon: Settings, group: 'settings', minRole: 'admin' },
 ];
 
 interface AdminLayoutProps {
@@ -111,6 +130,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const role: UserRole = user?.role || 'viewer';
   const visibleNav = ADMIN_NAV.filter((item) => !item.minRole || roleAtLeast(role, item.minRole));
+
+  /**
+   * Sections in `ADMIN_NAV_GROUPS` order, each holding the items this role can
+   * actually open. Empty sections are dropped, so a Viewer sees no "Settings"
+   * heading with nothing under it.
+   */
+  const groupedNav = ADMIN_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: visibleNav.filter((item) => item.group === group.id),
+  })).filter((group) => group.items.length > 0);
 
   /**
    * Which nav row carries a count, and what it counts.
@@ -146,36 +175,48 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {visibleNav.map((item) => {
-          const isActive = currentPath === item.route;
-          const count = badgeFor(item.route);
-          return (
-            <button
-              key={item.route}
-              onClick={() => {
-                onNavigate(item.route);
-                setMobileOpen(false);
-              }}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              title={collapsed ? item.label : undefined}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-              {!collapsed && count !== undefined && count > 0 && (
-                <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
-                  {count}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
+      {/* Nav — grouped sections; collapsed mode keeps a hairline instead of a label */}
+      <nav className="flex-1 overflow-y-auto p-2">
+        {groupedNav.map((group, groupIndex) => (
+          <div key={group.id} className={groupIndex > 0 ? 'mt-3' : undefined}>
+            {groupIndex > 0 && collapsed && <div className="mx-2 mb-2 border-t border-border" />}
+            {!collapsed && (
+              <p className="px-3 pb-1.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = currentPath === item.route;
+                const count = badgeFor(item.route);
+                return (
+                  <button
+                    key={item.route}
+                    onClick={() => {
+                      onNavigate(item.route);
+                      setMobileOpen(false);
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+                    {!collapsed && count !== undefined && count > 0 && (
+                      <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
+                        {count}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User footer */}

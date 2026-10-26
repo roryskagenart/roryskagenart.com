@@ -36,6 +36,12 @@ interface CatalogViewProps {
   artworks: ArtworkRecord[];
   loading?: boolean;
   role: UserRole;
+  /**
+   * Curated series (taxonomy terms, in the studio's order) to offer in the
+   * filter, on top of the series the loaded works actually use. Without this a
+   * freshly created series is unfilterable until an artwork is assigned to it.
+   */
+  seriesOptions?: string[];
   onSelectArtwork?: (slug: string) => void;
   onToggleHero?: (slug: string, next: boolean) => void;
   onToggleEnabled?: (slug: string, next: boolean) => void;
@@ -55,6 +61,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   artworks,
   loading,
   role,
+  seriesOptions: curatedSeries,
   onSelectArtwork,
   onToggleHero,
   onToggleEnabled,
@@ -82,12 +89,17 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const isAdmin = role === 'admin';
 
   const seriesOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of artworks) {
-      if (a.gallery_series) set.add(a.gallery_series);
-    }
-    return Array.from(set).sort().map((s) => ({ value: s, label: s }));
-  }, [artworks]);
+    // Curated terms keep their order; series that only exist on records follow
+    // alphabetically so the filter never hides a value that is in use.
+    const ordered = [...(curatedSeries ?? [])];
+    const seen = new Set(ordered);
+    const extras = Array.from(
+      new Set(artworks.map((a) => a.gallery_series).filter(Boolean) as string[])
+    )
+      .filter((s) => !seen.has(s))
+      .sort();
+    return [...ordered, ...extras].map((s) => ({ value: s, label: s }));
+  }, [artworks, curatedSeries]);
 
   const filtered = useMemo(() => {
     const inScope = artworks.filter((a) =>
