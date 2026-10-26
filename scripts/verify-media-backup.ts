@@ -52,18 +52,35 @@ function getConnectionString(): string {
     process.env.VRCL_SUPA_POSTGRES_PRISMA_URL ||
     process.env.VRCL_SUPA_POSTGRES_URL ||
     process.env.VRCL_SUPA_POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
     '';
   if (!raw) throw new Error('PostgreSQL connection string missing from environment.');
   return raw.replace(/\?.*$/, '');
 }
 
 function storageClient() {
+  // ⚠️ No cross-project fallback: a stale host literal here would silently verify the WRONG
+  // project's bucket and report a clean backup. Fail loudly instead.
   const url =
     process.env.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL ||
     process.env.VRCL_SUPA_SUPABASE_URL ||
-    'https://orphcusijzkxpxkzapjp.supabase.co';
-  const key = process.env.VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error('VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY is required to list the bucket.');
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL;
+  if (!url) {
+    throw new Error(
+      'Supabase URL missing: set NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL, VRCL_SUPA_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL.'
+    );
+  }
+  const key =
+    process.env.VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error(
+      'Supabase service-role key missing: set VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY.'
+    );
+  }
   return createClient(url, key, { auth: { persistSession: false } });
 }
 

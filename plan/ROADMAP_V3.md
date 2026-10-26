@@ -94,7 +94,7 @@ this roadmap argues for, and both are *prerequisites*, not scope creep.
 | **2** | Addressability — real paths, per-artwork SEO, sitemap | No | *new — prerequisite* | `v3.0.0` |
 | **3** | Read-only extraction + reconcile, plus the bulk media path | **No** | **Phase B** | `v3.0.0` |
 | **4** | The load | **Yes — the highest-consequence write in the project's history** | **Phase C** | `v3.0.0` |
-| **5** | Mural-aware features & refactors | Yes (content edits) | **Phase D** | `v3.4.0` |
+| **5** | Mural-aware features & refactors | Yes (content edits) | **Phase D** | `v3.5.0` |
 
 > **Changed from the original roadmap.** Phases 0–3 were to ship in `v2.12.0` and Phase 4 in
 > `v3.0.0`. Those version numbers no longer exist. The release boundary is now **inside** `v3.0.0`:
@@ -144,8 +144,16 @@ real SEO equity to buy a version number. **Still recommended against.**
 | **`v3.0.0`** | **major** *(milestone)* | Phase 0 remainder · Phase 1 remainder · **Phase 2 (addressability)** · Phase 3 (= ADR Phase B) + the bulk media path · **Phase 4 (= ADR Phase C, the load)** | **Honest position: this is a milestone major.** Every item is additive, read-only, or a data load behind `draft = true`, and the one interface change (real paths) is made non-breaking by permanent redirects. It is labelled `3.0.0` because it is the client-facing deliverable the studio engaged for: the point at which the site stops being a fine-art gallery and becomes a mural **and** fine-art practice. **The CHANGELOG entry will say this explicitly.** |
 | **`v3.1.0`** | minor | **The studio feedback & planning tool — *Capture*** ([`ROADMAP_V3_1_TO_V3_3_FEEDBACK_AND_PLANNING.md`](./ROADMAP_V3_1_TO_V3_3_FEEDBACK_AND_PLANNING.md)): the changelog + deployment-log view, CRUD of ideas/features/bugs/tasks, and the public + staff intake doors | Additive: one new table (`plan_items`), no existing table, no artwork route and no public render path touched. |
 | **`v3.2.0`** | minor | The same tool — ***Group***: `plan_releases`, grouping, triage, unread badge, batched digest | Additive, with a reviewable backfill from the `v3.1.0` free-text label column. |
-| **`v3.3.0`** | minor | The same tool — ***Close the loop***: release-notes assembly and reconciliation against `CHANGELOG.md` | Additive; it **drafts** a changelog section for a human and never writes the file. |
-| **`v3.4.0`** | minor | **Phase 5** (= ADR Phase D, mural-aware features) + the deferred studio-CMS backlog | Additive features, driven by real data. |
+| **`v3.3.0`** | minor | **The Supabase + Blob migration** — the studio's data moves to Rory's own accounts (`orphcusijzkxpxkzapjp` → `vmcnomurydkznkvtlucv`), the asset registry and 670 database rows are repointed, env resolution accepts both naming schemes, and `/api/health` proves the database instead of the process | No new feature and no schema change, but it changes **where the data lives**, which is exactly the kind of change a patch number would understate. Shipped 2026-10-26. |
+| **`v3.4.0`** | minor | The same tool — ***Close the loop***: release-notes assembly and reconciliation against `CHANGELOG.md` | Additive; it **drafts** a changelog section for a human and never writes the file. |
+| **`v3.5.0`** | minor | **Phase 5** (= ADR Phase D, mural-aware features) + the deferred studio-CMS backlog | Additive features, driven by real data. |
+
+> ⚠️ **Reassigned again 2026-10-26 (owner decision).** `v3.3.0` had been reserved for *Close the
+> loop*. The **Supabase + Blob migration** was cut as `v3.3.0` instead, so **Close → `v3.4.0`** and
+> **Phase 5 → `v3.4.0` → `v3.5.0`**. As with the 2026-09-15 reassignment, this is legitimate because
+> **nothing had shipped against the old numbers** — no tag, no CHANGELOG section, no branch — and
+> **no tag was moved**. The rows below record the earlier mapping; they are left as written rather
+> than rewritten, so the trail stays readable.
 
 > ⚠️ **Reassigned 2026-09-15 (owner decision Q-A).** `v3.1.0` was Phase 5 in the previous revision
 > of this table. The owner chose to ship the **studio feedback & planning tool** first, as
@@ -580,7 +588,7 @@ Phase 3's gap list clean and COLLISIONs adjudicated · 3.B's render stage comple
 
 ---
 
-### Phase 5 — Mural-aware features and refactors (ADR 0001 Phase D; ships in `v3.4.0`)
+### Phase 5 — Mural-aware features and refactors (ADR 0001 Phase D; ships in `v3.5.0`)
 
 **Scope.** Mural-specific facets (project type, client, commissioning context), a mural view or
 filter, and the review-and-publish workflow for the loaded drafts — all **driven by the real data**,
@@ -680,7 +688,7 @@ ADR 0001 §5 explicitly defers these, and **this roadmap keeps that boundary**:
 - **Design-system work.** No design tokens, no component-library consolidation, no theming rework.
 - **Feature scaffolding not touched by the migration path.**
 
-And from `BACKLOG_STUDIO_CMS.md`, these are `v3.4.0`-or-later — they ride with Phase 5, because the
+And from `BACKLOG_STUDIO_CMS.md`, these are `v3.5.0`-or-later — they ride with Phase 5, because the
 `v3.1.0` they were originally dated to is now the studio feedback & planning tool (§3.4):
 
 - Per-artwork revision history / undo (§1.2).
@@ -715,10 +723,12 @@ Each is reversible if the owner disagrees.
 4. **The backfill SQL is staged outside `supabase/migrations/`** until the Phase 4 PR, because the
    runner applies every file in that directory (deviation from `PRD_V3` §3 Step 4c).
 5. **The cheap wins land via `metadata`** — no migration, and before the mural rows arrive.
-6. **Phase 5 ships separately from Phase 4** — now **`v3.4.0`**, not `v3.1.0`. ⚠️ **Reassigned
+6. **Phase 5 ships separately from Phase 4** — now **`v3.5.0`**, not `v3.1.0`. ⚠️ **Reassigned
    2026-09-15 (owner decision Q-A):** `v3.1.0`–`v3.3.0` went to the **studio feedback & planning
    tool** and Phase 5 slid one minor. Nothing had shipped against `v3.1.0` — no tag, no CHANGELOG
-   section, no branch — and **no tag was moved** (§3.4, §3.5).
+   section, no branch — and **no tag was moved** (§3.4, §3.5). ⚠️ **Reassigned again 2026-10-26:**
+   the **Supabase + Blob migration** took `v3.3.0`, so Close slid to `v3.4.0` and Phase 5 slid a
+   second minor to **`v3.5.0`** — under the same no-tag-moved condition.
 7. **`v3.0.0` is recorded as a milestone major, with the SemVer caveat stated in the CHANGELOG** —
    rather than manufacturing a breaking change to justify it (§3.4).
 8. **The taxonomy / `artwork_terms` path is treated as new, untested code** (R-09).

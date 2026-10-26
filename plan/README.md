@@ -3,6 +3,13 @@
 Status of every planning document in this directory. **Read `../AGENTS.md` first** — it holds the
 verified current state; these documents are historical specs and design records.
 
+> ⚠️ **Current version map (authoritative — supersedes any number in the rows below).**
+> `v3.1.0` Capture ✅ · `v3.2.0` Group ✅ · `v3.2.1` navbar ✅ · **`v3.3.0` Supabase + Blob
+> migration ✅ (2026-10-26)** · **`v3.4.0` *Close the loop* — next, unstarted** · `v3.5.0` Phase 5.
+> The numbers were reassigned twice (2026-09-15 and 2026-10-26); both roadmap documents record the
+> supersession rather than rewriting it, so their older `v3.3.0 = Close the loop` and
+> `v3.4.0 = Phase 5` statements are **history, not current**.
+
 | Document | Status | Covers | Superseded by / notes |
 | :--- | :--- | :--- | :--- |
 | [`PRD_V2.1_CLOUDINARY_EXIT.md`](./PRD_V2.1_CLOUDINARY_EXIT.md) | ✅ **Implemented** | Cloudinary → Supabase Storage migration (stages v2.1–v2.4) | Delivered across `5b6a857`, `7be31a5`, `406def2` |

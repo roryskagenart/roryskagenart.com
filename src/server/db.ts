@@ -5,10 +5,17 @@ let poolInstance: Pool | null = null;
 let supabaseAdminInstance: SupabaseClient | null = null;
 
 export function getCleanConnectionString(): string {
+  // `VRCL_SUPA_*` first because it is the pair that is known-good in production today; the
+  // unprefixed names are what a Vercel Supabase integration writes, and what `.env` holds.
+  // Both are accepted so neither naming scheme can leave the server with no database — which
+  // is exactly what happened in October 2026 when only the unprefixed set survived.
   const raw =
     process.env.VRCL_SUPA_POSTGRES_PRISMA_URL ||
     process.env.VRCL_SUPA_POSTGRES_URL ||
     process.env.VRCL_SUPA_POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
     '';
 
   // Strip query parameters so pg SSL configuration is authoritative
@@ -51,18 +58,25 @@ export function getSupabaseAdmin(): SupabaseClient {
   if (!supabaseAdminInstance) {
     // ⚠️ No cross-project fallback. This client carries the service-role key, so a stale host
     // literal would point privileged writes at a retired project instead of failing loudly.
+    // Both naming schemes are accepted; the host is never defaulted.
     const supabaseUrl =
       process.env.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL ||
-      process.env.VRCL_SUPA_SUPABASE_URL;
+      process.env.VRCL_SUPA_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.SUPABASE_URL;
     if (!supabaseUrl) {
       throw new Error(
-        'VRCL_SUPA_SUPABASE_URL (or NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL) is required for admin database operations.'
+        'Supabase URL missing: set NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL, VRCL_SUPA_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL.'
       );
     }
 
-    const serviceKey = process.env.VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY;
+    const serviceKey =
+      process.env.VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
-      throw new Error('VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY is required for admin database operations.');
+      throw new Error(
+        'Supabase service-role key missing: set VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY.'
+      );
     }
 
     supabaseAdminInstance = createClient(supabaseUrl, serviceKey, {

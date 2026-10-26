@@ -8,12 +8,16 @@ const metaEnv = (typeof import.meta !== 'undefined' && (import.meta as any).env)
 // unnoticed. Missing config must leave `isSupabaseConfigured` false and disable auth visibly.
 const supabaseUrl =
   metaEnv.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL ||
+  metaEnv.NEXT_PUBLIC_SUPABASE_URL ||
   metaEnv.VITE_SUPABASE_URL ||
   '';
 
 const supabaseAnonKey =
   metaEnv.VRCL_SUPA_SUPABASE_ANON_KEY ||
+  metaEnv.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_ANON_KEY ||
   metaEnv.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_PUBLISHABLE_KEY ||
+  metaEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  metaEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   metaEnv.VITE_SUPABASE_ANON_KEY ||
   '';
 

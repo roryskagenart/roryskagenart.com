@@ -1,16 +1,22 @@
-# Roadmap — a studio feedback & planning tool: `v3.1.0` → `v3.3.0`
+# Roadmap — a studio feedback & planning tool: `v3.1.0` → `v3.4.0`
 
-> **Status:** 📋 **PROPOSED — nothing here is scheduled.** Written 2026-09-15 against the state that
-> shipped as `v3.0.0`. Every claim below was verified against the code, the live schema or the
-> migration set; file paths, route guards and column names are real.
+> **Status:** 🚧 **`v3.1.0` and `v3.2.0` shipped; `v3.4.0` (*Close the loop*) is unstarted.** Written
+> 2026-09-15 against the state that shipped as `v3.0.0`. Every claim below was verified against the
+> code, the live schema or the migration set; file paths, route guards and column names are real.
+>
+> ⚠️ **The version numbers in this document were reassigned twice, and the text below records the
+> 2026-09-15 mapping rather than being rewritten.** `v3.1.0` Capture and `v3.2.0` Group both shipped
+> under those numbers. **`v3.3.0` was then taken by the Supabase + Blob migration (2026-10-26)**, so
+> ***Close the loop* is `v3.4.0`** and **Phase 5 is `v3.5.0`**. Read every `v3.3.0` below as
+> **`v3.4.0`** unless it is describing the 2026-09-15 decision itself. No tag was moved either time.
 >
 > **Read `../AGENTS.md` first** — it is the verified current state. Read
 > [`ROADMAP_V3.md`](./ROADMAP_V3.md) second: **it already spends the version numbers this document
 > needs.** §1.1 is the collision, and it is the one thing that must be decided before any of this
 > is built.
 >
-> **✅ Owner decisions recorded 2026-09-15** (§9). **Q-A = A:** this tool takes `v3.1.0`–`v3.3.0`
-> and Phase 5 slides to `v3.4.0` — and the `ROADMAP_V3.md` edits that requires are in this same PR,
+> **✅ Owner decisions recorded 2026-09-15** (§9). **Q-A = A:** this tool took `v3.1.0`–`v3.3.0`
+> and Phase 5 slid to `v3.4.0` — and the `ROADMAP_V3.md` edits that requires are in this same PR,
 > as §3.5 demanded. **Q-B:** the "development logs" are **`CHANGELOG.md`** and
 > **`DEPLOYMENT_LOG.md`**, shown **as they are changed**. **Q-C:** no public "What's new" page —
 > out of scope entirely, not deferred. Still open: **Q-D** (pre-flight doc repair) and **Q-E**
@@ -106,7 +112,7 @@ Seven capabilities. This list is the definition of "the core feature set" that �
 | **C4** | **Intake (public)** — a footer link for public feedback/suggestions | `v3.1.0` |
 | **C5** | **Intake (staff)** — feature-request and bug-submission links for authenticated users | `v3.1.0` |
 | **C6** | **Triage** — status, priority, promote, assign, link | `v3.2.0` |
-| **C7** | **Close the loop** — draft release notes from completed items, and reconcile them against what actually shipped | `v3.3.0` |
+| **C7** | **Close the loop** — draft release notes from completed items, and reconcile them against what actually shipped | `v3.4.0` |
 
 C7 is the reason the feature exists. A backlog nobody reads is worse than a spreadsheet; a backlog
 that produces the changelog entry is a system of record.
@@ -469,7 +475,7 @@ The release where the board becomes a real tool rather than a list.
 
 ---
 
-### `v3.3.0` — **Close the loop** (C7)
+### `v3.4.0` — **Close the loop** (C7)
 
 1. **Release-notes assembly** — from `plan_items` where `release_id = X AND status = 'done'`, emit a
    **Keep a Changelog** section grouped by `kind` (`feature`/`idea` → Added, `bug` → Fixed,

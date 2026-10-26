@@ -21,6 +21,118 @@ export type { ReleaseLog };
 export const RELEASE_LOG: ReleaseLog = {
   "changelog": [
     {
+      "version": "3.3.0",
+      "date": "2026-10-26",
+      "summary": "\"Home\" — the studio's data moves to its own accounts. This release is infrastructure, not features: the database, the storage bucket and the backup store move from the retired VIO Supabase project to Rory's own, and every place that had memorised the old host is either rewritten or made incapable of defaulting to it. It is deliberately not \"Close the loop\" — that work is now v3.4.0 and Phase 5 is v3.5.0 (see the roadmap renumber below). Delivered by commits: 8c3e280 (registry + browser client repoint), 16e7552 (launch page hero), 2b1e21f (/api/health checks the database).",
+      "sections": [
+        {
+          "heading": "Changed",
+          "category": "Changed",
+          "entries": [
+            {
+              "text": "The Supabase project is Rory's own. orphcusijzkxpxkzapjp (VIO) → vmcnomurydkznkvtlucv. Data moved and verified on 2026-10-26: 41 of 47 tables byte-identical, storage 1,109 objects / 102,627,424 B identical, Vercel Blob 180 objects / 12,359,620 B identical.",
+              "details": [],
+              "raw": "**The Supabase project is Rory's own.** `orphcusijzkxpxkzapjp` (VIO) → **`vmcnomurydkznkvtlucv`**.\n  Data moved and verified on 2026-10-26: **41 of 47 tables byte-identical**, storage **1,109 objects\n  / 102,627,424 B** identical, Vercel Blob **180 objects / 12,359,620 B** identical."
+            },
+            {
+              "text": "src/data/assetRegistry.ts regenerated — 3,007 URLs, 1,002 keys / 319 rows / 61 covers. ⚠️ This was the actual breakage, and a database scan could not see it. 116 of 205 artworks store a bare filename and are resolved through this file, so it is the primary image path. An exhaustive information_schema sweep of 203 columns across 3 schemas read clean while the browser bundle still shipped 3,007 URLs pointing at the retired project. A normalised diff against the previous file is empty — it is a pure host swap, not a re-derivation.",
+              "details": [],
+              "raw": "**`src/data/assetRegistry.ts` regenerated — 3,007 URLs, 1,002 keys / 319 rows / 61 covers.**\n  ⚠️ **This was the actual breakage, and a database scan could not see it.** 116 of 205 artworks\n  store a **bare filename** and are resolved through this file, so it is the *primary* image path.\n  An exhaustive `information_schema` sweep of 203 columns across 3 schemas read clean while the\n  browser bundle still shipped 3,007 URLs pointing at the retired project. A normalised diff against\n  the previous file is empty — it is a pure host swap, not a re-derivation."
+            },
+            {
+              "text": "670 database rows hardcoded the retired host and were rewritten in place: media_assets.url (320), media_assets.thumbnail_url (320), artworks.image_url (30). A dump-and-restore does not fix these — they are data, not schema.",
+              "details": [],
+              "raw": "**670 database rows hardcoded the retired host** and were rewritten in place: `media_assets.url`\n  (320), `media_assets.thumbnail_url` (320), `artworks.image_url` (30). A dump-and-restore does not\n  fix these — they are data, not schema."
+            },
+            {
+              "text": "scripts/generate-asset-registry.ts no longer has a default project. It previously fell back to a hardcoded URL, so a missing env var silently generated a registry for the wrong project. It now throws: VRCL_SUPA_SUPABASE_URL (or SUPABASE_URL) must be set — refusing to generate URLs for an unknown project.",
+              "details": [],
+              "raw": "**`scripts/generate-asset-registry.ts` no longer has a default project.** It previously fell back\n  to a hardcoded URL, so a missing env var silently generated a registry for the *wrong* project. It\n  now throws: `VRCL_SUPA_SUPABASE_URL (or SUPABASE_URL) must be set — refusing to generate URLs for\n  an unknown project.`"
+            },
+            {
+              "text": "public/launch/index.html — the launch page is static, so the registry fix could not reach it. Its hero was the last hardcoded VIO reference in a served file (old URL 000, new 200 image/webp).",
+              "details": [],
+              "raw": "**`public/launch/index.html`** — the launch page is static, so the registry fix could not reach it.\n  Its hero was the last hardcoded VIO reference in a **served** file (old URL `000`, new `200 image/webp`)."
+            }
+          ]
+        },
+        {
+          "heading": "Added",
+          "category": "Added",
+          "entries": [
+            {
+              "text": "**Both env naming schemes are accepted, VRCL_SUPA_* first.** src/server/db.ts and src/lib/supabase.ts now resolve VRCL_SUPA_* → unprefixed POSTGRES_* / SUPABASE_* / NEXT_PUBLIC_*. Neither scheme can leave the server without a database again, and the host is still never defaulted — a missing host is a named error listing every accepted variable, not a silent fallback to a project nobody chose.",
+              "details": [],
+              "raw": "**Both env naming schemes are accepted, `VRCL_SUPA_*` first.** `src/server/db.ts` and\n  `src/lib/supabase.ts` now resolve `VRCL_SUPA_*` → unprefixed `POSTGRES_*` / `SUPABASE_*` /\n  `NEXT_PUBLIC_*`. Neither scheme can leave the server without a database again, and **the host is\n  still never defaulted** — a missing host is a named error listing every accepted variable, not a\n  silent fallback to a project nobody chose."
+            },
+            {
+              "text": "/api/health now proves the database, not just the process. It answers 503 with {status:\"degraded\", db:\"down\", reason:\"database_unreachable\"} when the pool cannot connect. This closes the failure mode that made the October outage invisible: the endpoint reported healthy from a deployment whose getDbPool() was throwing, and the UI renders a failed fetch as 0 artworks, not as an error.",
+              "details": [],
+              "raw": "**`/api/health` now proves the database, not just the process.** It answers **`503`** with\n  `{status:\"degraded\", db:\"down\", reason:\"database_unreachable\"}` when the pool cannot connect. This\n  closes the failure mode that made the October outage invisible: the endpoint reported healthy from\n  a deployment whose `getDbPool()` was throwing, and the UI renders a failed fetch as **0 artworks**,\n  not as an error."
+            },
+            {
+              "text": ".env.example rewritten against code-verified names only — 20 keys, all empty, grouped by provider. It previously documented ADMIN_INITIAL_PASSWORD, which no code reads.",
+              "details": [],
+              "raw": "**`.env.example` rewritten against code-verified names only** — 20 keys, all empty, grouped by\n  provider. It previously documented `ADMIN_INITIAL_PASSWORD`, which **no code reads**."
+            },
+            {
+              "text": ".env and .env.local regrouped by provider with a comment on every key, and an inert ARCHIVED section that preserves the commented-out VIO VRCL_SUPA_* block verbatim rather than deleting it. Verified parse-equivalent to the originals (30 and 20 keys, zero value changes) and idempotent on re-run.",
+              "details": [],
+              "raw": "**`.env` and `.env.local` regrouped by provider** with a comment on every key, and an inert\n  `ARCHIVED` section that preserves the commented-out VIO `VRCL_SUPA_*` block verbatim rather than\n  deleting it. Verified **parse-equivalent** to the originals (30 and 20 keys, zero value changes)\n  and idempotent on re-run."
+            },
+            {
+              "text": "Cloudinary is retained on purpose. The catalogue left it in v3.1/v3.2 and no code reads the credentials, but the account is active and is being kept for a different future use. It now has its own documented provider section instead of being listed as dead.",
+              "details": [],
+              "raw": "**Cloudinary is retained on purpose.** The catalogue left it in v3.1/v3.2 and no code reads the\n  credentials, but the account is active and is being kept for a different future use. It now has\n  its own documented provider section instead of being listed as dead."
+            }
+          ]
+        },
+        {
+          "heading": "Fixed",
+          "category": "Fixed",
+          "entries": [
+            {
+              "text": "scripts/verify-media-backup.ts had a retired-host fallback. The script that verifies media backups would have defaulted to the VIO project and reported a clean backup of the wrong bucket. It now throws when unset and accepts both naming schemes.",
+              "details": [],
+              "raw": "**`scripts/verify-media-backup.ts` had a retired-host fallback.** The script that *verifies media\n  backups* would have defaulted to the VIO project and reported a clean backup of the wrong bucket.\n  It now throws when unset and accepts both naming schemes."
+            },
+            {
+              "text": "AGENTS.md — the database row named vmcnomlucv (a truncation, not a project) and §4's env block listed a set that did not match the code. Both now match the code exactly.",
+              "details": [],
+              "raw": "**`AGENTS.md`** — the database row named `vmcnomlucv` (a truncation, not a project) and §4's env\n  block listed a set that did not match the code. Both now match the code exactly."
+            },
+            {
+              "text": "DEPLOYMENT_LOG.md — the header named the retired ventureio/roryskagen project, a dead roryskagen.vercel.app alias and the VIO database. Rows dated before the cutover are left as written, because that is where those deploys actually ran, with a note saying so.",
+              "details": [],
+              "raw": "**`DEPLOYMENT_LOG.md`** — the header named the retired `ventureio/roryskagen` project, a dead\n  `roryskagen.vercel.app` alias and the VIO database. Rows dated before the cutover are left as\n  written, because that is where those deploys actually ran, with a note saying so."
+            }
+          ]
+        },
+        {
+          "heading": "Notes",
+          "category": "Notes",
+          "entries": [
+            {
+              "text": "⚠️ Vercel snapshots env per deployment. The Supabase integration had detached (integrationIds: []), so the seven server-side VRCL_SUPA_* names were gone from Production — yet the already-running deployment kept working, and the breakage only appeared at the next build. After any env or integration change: redeploy, then require /api/health → db:\"up\".",
+              "details": [],
+              "raw": "⚠️ **Vercel snapshots env per deployment.** The Supabase integration had detached\n  (`integrationIds: []`), so the seven server-side `VRCL_SUPA_*` names were gone from Production —\n  yet the already-running deployment kept working, and the breakage only appeared at the **next\n  build**. After any env or integration change: redeploy, then require `/api/health` → `db:\"up\"`."
+            },
+            {
+              "text": "⚠️ The version was reassigned, not skipped. plan/ROADMAP_V3*.md had reserved v3.3.0 for C7 \"Close the loop\" (tasks 27–31) and v3.4.0 for Phase 5. This migration took v3.3.0, so Close → v3.4.0 and Phase 5 → v3.5.0, and both roadmap documents were edited to agree. Nothing had shipped against the old numbers.",
+              "details": [],
+              "raw": "⚠️ **The version was reassigned, not skipped.** `plan/ROADMAP_V3*.md` had reserved `v3.3.0` for\n  C7 *\"Close the loop\"* (tasks 27–31) and `v3.4.0` for Phase 5. This migration took `v3.3.0`, so\n  **Close → `v3.4.0`** and **Phase 5 → `v3.5.0`**, and both roadmap documents were edited to agree.\n  Nothing had shipped against the old numbers."
+            },
+            {
+              "text": "One synthetic test fixture (src/test/mediaReconcile.test.ts) still builds URLs from the retired host string. It is a literal used to compare strings, never fetched, and is left as-is.",
+              "details": [],
+              "raw": "One synthetic test fixture (`src/test/mediaReconcile.test.ts`) still builds URLs from the retired\n  host string. It is a literal used to compare strings, never fetched, and is left as-is."
+            }
+          ]
+        }
+      ],
+      "unreleased": false
+    },
+    {
       "version": "3.2.1",
       "date": "2026-10-06",
       "summary": null,
@@ -1854,6 +1966,46 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "deployments": [
     {
+      "date": "2026-10-26",
+      "version": "pre-v3.3.0",
+      "url": "https://roryskagenart-2di7whq8m-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "2b1e21f: /api/health now proves the database, not just the process. The endpoint returned {status:\"ok\"} from a deployment whose getDbPool() was throwing — so the outage that emptied the catalogue reported green. It now calls checkDbHealth(), answers 503 with {status:\"degraded\", db:\"down\", reason:\"database_unreachable\"} when the pool cannot connect, and logs the underlying error server-side. This is the deploy that restored the site after the 2026-10-26 incident (below)",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
+      "version": "pre-v3.3.0",
+      "url": "https://roryskagenart-jw5dsnrqi-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "16e7552: the launch page hero (public/launch/index.html) repointed from the retired VIO host to vmcnomurydkznkvtlucv. The old URL returned 000; the new one returns 200 image/webp. This was the last hardcoded VIO reference in a served file — the page is static, so the registry fix could not reach it",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
+      "version": "pre-v3.3.0",
+      "url": "https://roryskagenart-65cckx1hm-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "8c3e280: the asset registry and the browser client repointed to the live project. src/data/assetRegistry.ts regenerated — 3,007 URLs, 1,002 keys / 319 rows / 61 covers, VIO host count 3,007 → 0, and a normalised diff against the old file is empty, so the change is a pure host swap. This mattered more than a database fix: the registry is the primary image path (116 of 205 artworks store a bare filename, resolved through it), so a DB-only scan read clean while the bundle still shipped 3,007 dead URLs. src/lib/supabase.ts also lost its retired-host literal and VIO-era anon key",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-26",
+      "version": "pre-v3.3.0",
+      "url": "https://roryskagenart-4jk160tae-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Preview",
+      "commits": "524a16de: chore/db-blob-migration preview — the Supabase + Blob migration branch. Not merged as-is; its content landed through the three production deploys above",
+      "flagged": false
+    },
+    {
       "date": "2026-10-06",
       "version": "v3.2.1",
       "url": "https://roryskagenart-mwu5lyrnx-roryskagenart.vercel.app",
@@ -2745,8 +2897,8 @@ export const RELEASE_LOG: ReleaseLog = {
     }
   ],
   "diagnostics": {
-    "releases": 23,
-    "deploymentRows": 89,
+    "releases": 24,
+    "deploymentRows": 93,
     "warnings": []
   }
 };

@@ -259,27 +259,49 @@ Full column definitions for `artworks` and `inquiries` are documented in the mig
 
 ## Environment Variables
 
-Configure the following variables in `.env` (refer to `.env.example`):
+Configure the following variables in `.env` (refer to `.env.example`, which is generated from the
+names the code actually reads):
 
 ```bash
-# Supabase / PostgreSQL (Vercel integration naming — these are the names the code reads)
+# Supabase / PostgreSQL — `VRCL_SUPA_*` is canonical and wins where both exist.
+# The unprefixed POSTGRES_*/SUPABASE_*/NEXT_PUBLIC_SUPABASE_* names a Vercel integration
+# writes are also accepted as fallbacks. Neither scheme defaults the host: if no URL is
+# set, auth is disabled and the data endpoints fail loudly.
 NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL=
 NEXT_PUBLIC_VRCL_SUPA_SUPABASE_PUBLISHABLE_KEY=
+VRCL_SUPA_SUPABASE_URL=
 VRCL_SUPA_SUPABASE_ANON_KEY=
 VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY=
 VRCL_SUPA_POSTGRES_PRISMA_URL=          # preferred connection string
 VRCL_SUPA_POSTGRES_URL_NON_POOLING=
-VRCL_SUPA_SUPABASE_JWT_SECRET=
+VRCL_SUPA_SUPABASE_JWT_SECRET=          # read by no code path today
 
-# Studio admin bootstrap (optional — the first admin is created by the
-# profiles migration backfill; additional admins are invited from #/admin/users)
+# Studio admin (Supabase Auth is the primary path; the first admin is created by the
+# profiles migration backfill, and additional admins are invited from #/admin/users)
 ADMIN_EMAIL=
-ADMIN_INITIAL_PASSWORD=
 
 # Resend Email Integration
 RESEND_API_KEY=
 RESEND_EMAIL_DOMAIN=
+RESEND_WEBHOOK_SECRET=                  # verifies POST /api/email/webhook
+
+# Outbound mail routing — live | redirect | off (unset => inferred from VERCEL_ENV)
+EMAIL_MODE=
+EMAIL_REDIRECT_TO=                      # required when EMAIL_MODE=redirect
+STUDIO_CC=
+
+# Scheduled off-site backup (Vercel Cron -> /api/cron/backup -> Vercel Blob)
+CRON_SECRET=                            # unset => the endpoint fails closed
+BLOB_READ_WRITE_TOKEN=
+
+# Branded email links
+SITE_URL=
+BRAND_LOGO_URL=
 ```
+
+> ⚠️ `ADMIN_INITIAL_PASSWORD` is **not** read by any code path and has been removed from this list.
+> Admins are created by the `profiles` backfill and invited from `#/admin/users`.
+
 
 ---
 
@@ -357,10 +379,15 @@ VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY=eyJ...        # server-side auth + DB admin
 # Email — required for /api/inquiries notifications
 RESEND_API_KEY=re_...
 
-# Optional (admin bootstrap; Supabase Auth is the primary path)
+# Optional (studio recipient; Supabase Auth is the primary path)
 ADMIN_EMAIL=
-ADMIN_INITIAL_PASSWORD=
 ```
+
+⚠️ **After changing any of these, redeploy and require `GET /api/health` to report
+`{"status":"ok","db":"up"}`.** Vercel bakes env into each deployment at build time, so an
+already-running deployment keeps its old values and the breakage only appears at the next build.
+`/api/health` returns **503** with `db:"down"` when the database is unreachable — the UI renders a
+failed fetch as **0 artworks**, not as an error.
 
 ### First-time setup checklist
 
