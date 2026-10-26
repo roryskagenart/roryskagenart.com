@@ -10,13 +10,18 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
-  isDark: true,
+  isDark: false,
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  /**
+   * Light is the studio default for BOTH the public site and the admin app.
+   * A saved preference still wins — only a stored `'dark'` turns the lights off.
+   * Mirrored by the no-flash boot script in `index.html`; change both together.
+   */
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     try {
       const saved = localStorage.getItem('rory_studio_theme');
@@ -26,7 +31,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // Fallback
     }
-    return 'dark';
+    return 'light';
   });
 
   // Apply classes synchronously before paint
