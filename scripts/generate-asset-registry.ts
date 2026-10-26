@@ -53,10 +53,17 @@ interface RegistryRow {
   cover_rank: number;
 }
 
+// ⚠️ No default host. A hardcoded project ref here means a regeneration run without env
+// silently rewrites every URL in the committed registry to a project that may no longer
+// exist — the failure is invisible until images 404. Fail instead.
 const SUPABASE_URL =
   process.env.VRCL_SUPA_SUPABASE_URL ||
-  process.env.SUPABASE_URL ||
-  'https://orphcusijzkxpxkzapjp.supabase.co';
+  process.env.SUPABASE_URL;
+if (!SUPABASE_URL) {
+  throw new Error(
+    'VRCL_SUPA_SUPABASE_URL (or SUPABASE_URL) must be set — refusing to generate URLs for an unknown project.'
+  );
+}
 
 function getConnectionString(): string {
   const raw =

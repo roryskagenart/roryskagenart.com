@@ -49,10 +49,16 @@ export async function query<T extends QueryResultRow = any>(
 
 export function getSupabaseAdmin(): SupabaseClient {
   if (!supabaseAdminInstance) {
+    // ⚠️ No cross-project fallback. This client carries the service-role key, so a stale host
+    // literal would point privileged writes at a retired project instead of failing loudly.
     const supabaseUrl =
       process.env.NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL ||
-      process.env.VRCL_SUPA_SUPABASE_URL ||
-      'https://orphcusijzkxpxkzapjp.supabase.co';
+      process.env.VRCL_SUPA_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error(
+        'VRCL_SUPA_SUPABASE_URL (or NEXT_PUBLIC_VRCL_SUPA_SUPABASE_URL) is required for admin database operations.'
+      );
+    }
 
     const serviceKey = process.env.VRCL_SUPA_SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
