@@ -21,6 +21,41 @@ export type { ReleaseLog };
 export const RELEASE_LOG: ReleaseLog = {
   "changelog": [
     {
+      "version": "3.3.2",
+      "date": "2026-10-27",
+      "summary": "\"Release objects\" — a tag is no longer the end of a release. Every release now also publishes a GitHub Release whose body is the changelog section for that version. A patch, and a process one: no product change, no schema change, no migration, no API change. v3.4.0 is still Close the loop and v3.5.0 is still Phase 5 — the version map is untouched. Delivered by commits: 5ff95e0 (the extractor, its CLI and its test). Validated: tsc --noEmit clean · 928 tests / 58 files passing. This release is the convention's first use — its own Release object was produced by the script added here, not typed by hand.",
+      "sections": [
+        {
+          "heading": "Changed",
+          "category": "Changed",
+          "entries": [
+            {
+              "text": "A release is not finished at the tag. v3.3.1 got the repo's first GitHub Release object, but as a one-off. AGENTS.md §9 now makes it a step with a defined order — merge → production deploy → tag the merge commit → create the Release — because the body names the deployment URL, and that URL does not exist until Vercel has built the merge. Not a draft, not a prerelease. Tags alone were the habit until then.",
+              "details": [],
+              "raw": "**A release is not finished at the tag.** `v3.3.1` got the repo's first GitHub Release object, but\n  as a one-off. `AGENTS.md` §9 now makes it a step with a defined order — merge → production deploy →\n  tag the merge commit → **create the Release** — because the body names the deployment URL, and that\n  URL does not exist until Vercel has built the merge. Not a draft, not a prerelease. Tags alone were\n  the habit until then."
+            }
+          ]
+        },
+        {
+          "heading": "Added",
+          "category": "Added",
+          "entries": [
+            {
+              "text": "scripts/release-notes.ts (over the pure scripts/lib/releaseNotes.ts) prints or writes the Release body: the CHANGELOG.md section verbatim, heading dropped because GitHub prints the release title above it, plus a Production: … · Commit: … footer. --deploy-url and --commit are optional, so a dry run yields the same body without a footer. It exits non-zero when the version has no section — publishing an empty body looks like success on the releases page and cannot be corrected in place.",
+              "details": [],
+              "raw": "**`scripts/release-notes.ts`** (over the pure `scripts/lib/releaseNotes.ts`) prints or writes the\n  Release body: the `CHANGELOG.md` section **verbatim**, heading dropped because GitHub prints the\n  release title above it, plus a `**Production:** … · **Commit:** …` footer. `--deploy-url` and\n  `--commit` are optional, so a dry run yields the same body without a footer. It **exits non-zero**\n  when the version has no section — publishing an empty body looks like success on the releases page\n  and cannot be corrected in place."
+            },
+            {
+              "text": "src/test/releaseNotes.test.ts — 12 cases. The failure mode that matters is not a crash but a body that quietly disagrees with the changelog, because it is immutable once published; so the cases are the ways that happens — swallowing the next release's notes, ending the section at a ## inside a fenced SQL block, and emitting a body for a version that has no section. One case runs against the real CHANGELOG.md, because a fixture only proves the parser agrees with itself.",
+              "details": [],
+              "raw": "**`src/test/releaseNotes.test.ts`** — 12 cases. The failure mode that matters is not a crash but a\n  body that quietly disagrees with the changelog, because it is immutable once published; so the\n  cases are the ways that happens — swallowing the *next* release's notes, ending the section at a\n  `## ` inside a fenced SQL block, and emitting a body for a version that has no section. One case\n  runs against the real `CHANGELOG.md`, because a fixture only proves the parser agrees with itself."
+            }
+          ]
+        }
+      ],
+      "unreleased": false
+    },
+    {
       "version": "3.3.1",
       "date": "2026-10-26",
       "summary": "\"Studio polish\" — the theme the studio actually wanted, and dropdowns that load their values. A patch, not the next planned minor: v3.4.0 is still Close the loop and v3.5.0 is still Phase 5. The version map is untouched — nothing here is part of that program, and renumbering a third time would falsify two roadmap documents for a UI release. Delivered by commits: 12ce875 (light default), 456e1eb (taxonomy-driven dropdowns), 1eed72f (grouped sidebar). Validated: tsc --noEmit clean · 916 tests / 57 files passing · vite build OK. The admin screens behind auth were verified by jsdom only, not by screenshot.",
@@ -3013,7 +3048,7 @@ export const RELEASE_LOG: ReleaseLog = {
     }
   ],
   "diagnostics": {
-    "releases": 25,
+    "releases": 26,
     "deploymentRows": 97,
     "warnings": []
   }

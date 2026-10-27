@@ -6,12 +6,14 @@ verified current state; these documents are historical specs and design records.
 > ⚠️ **Current version map (authoritative — supersedes any number in the rows below).**
 > `v3.1.0` Capture ✅ · `v3.2.0` Group ✅ · `v3.2.1` navbar ✅ · **`v3.3.0` Supabase + Blob
 > migration ✅ (2026-10-26)** · **`v3.3.1` studio polish ✅ (2026-10-26)** — a **patch** (light
-> default theme, taxonomy-driven editor dropdowns, grouped sidebar); it is *not* part of this
+> default theme, taxonomy-driven editor dropdowns, grouped sidebar) · **`v3.3.2` release objects ✅
+> (2026-10-27)** — a **patch** (every release now publishes a GitHub Release whose body is extracted
+> from `CHANGELOG.md`); neither patch is part of this
 > program · **`v3.4.0` *Close the loop* — next, unstarted** · `v3.5.0` Phase 5.
 > The numbers were reassigned twice (2026-09-15 and 2026-10-26); both roadmap documents record the
 > supersession rather than rewriting it, so their older `v3.3.0 = Close the loop` and
-> `v3.4.0 = Phase 5` statements are **history, not current**. `v3.3.1` deliberately took a patch
-> number so that the program's numbering did not have to move a third time.
+> `v3.4.0 = Phase 5` statements are **history, not current**. `v3.3.1` and `v3.3.2` deliberately took
+> patch numbers so that the program's numbering did not have to move a third time.
 
 | Document | Status | Covers | Superseded by / notes |
 | :--- | :--- | :--- | :--- |
