@@ -2077,6 +2077,26 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "deployments": [
     {
+      "date": "2026-10-27",
+      "version": "v3.3.2",
+      "url": "https://roryskagenart-nnt7ga2y2-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Production",
+      "commits": "b90e286: PR #7 — release objects (release/v3.3.2). Every release now also publishes a GitHub Release, and its body is extracted from CHANGELOG.md rather than typed: a tag and its body are both immutable, so a body that disagrees with the changelog stays wrong forever. New scripts/release-notes.ts over the pure scripts/lib/releaseNotes.ts, pinned by src/test/releaseNotes.test.ts (12 cases, one against the real changelog). AGENTS.md §9 gains the step and its order — merge → production deploy → tag → Release, because the body names the deployment URL and that URL does not exist until Vercel has built the merge. Docs, scripts and tests only: no product change, no schema change, no migration, no API change. Annotated tag v3.3.2 points at this commit; the Release object is published, draft=false, prerelease=false, and this row is what its footer points at. Verified live: /api/health → {\"status\":\"ok\",\"db\":\"up\"}, and roryskagenart.com serves class=\"light h-full\"",
+      "flagged": false
+    },
+    {
+      "date": "2026-10-27",
+      "version": "v3.3.2-preview",
+      "url": "https://roryskagenart-twkgyly7m-roryskagenart.vercel.app",
+      "status": "● Ready",
+      "buildTime": "n/a",
+      "target": "Preview",
+      "commits": "a068ff6: release/v3.3.2 preview (PR #7) — the deploy that proved the release builds before the merge",
+      "flagged": false
+    },
+    {
       "date": "2026-10-26",
       "version": "v3.3.1",
       "url": "https://roryskagenart-4bj89c5js-roryskagenart.vercel.app",
@@ -3049,7 +3069,7 @@ export const RELEASE_LOG: ReleaseLog = {
   ],
   "diagnostics": {
     "releases": 26,
-    "deploymentRows": 97,
+    "deploymentRows": 99,
     "warnings": []
   }
 };
