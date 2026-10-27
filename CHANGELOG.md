@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.2] - 2026-10-27
+
+> **"Release objects" — a tag is no longer the end of a release.** Every release now also publishes a
+> GitHub Release whose body is the changelog section for that version.
+> A **patch**, and a process one: no product change, no schema change, no migration, no API change.
+> `v3.4.0` is still *Close the loop* and `v3.5.0` is still Phase 5 — the version map is untouched.
+>
+> **Delivered by commits:** `5ff95e0` (the extractor, its CLI and its test).
+>
+> **Validated:** `tsc --noEmit` clean · **928 tests / 58 files** passing.
+> **This release is the convention's first use** — its own Release object was produced by the script
+> added here, not typed by hand.
+
+### Changed
+
+- **A release is not finished at the tag.** `v3.3.1` got the repo's first GitHub Release object, but
+  as a one-off. `AGENTS.md` §9 now makes it a step with a defined order — merge → production deploy →
+  tag the merge commit → **create the Release** — because the body names the deployment URL, and that
+  URL does not exist until Vercel has built the merge. Not a draft, not a prerelease. Tags alone were
+  the habit until then.
+
+### Added
+
+- **`scripts/release-notes.ts`** (over the pure `scripts/lib/releaseNotes.ts`) prints or writes the
+  Release body: the `CHANGELOG.md` section **verbatim**, heading dropped because GitHub prints the
+  release title above it, plus a `**Production:** … · **Commit:** …` footer. `--deploy-url` and
+  `--commit` are optional, so a dry run yields the same body without a footer. It **exits non-zero**
+  when the version has no section — publishing an empty body looks like success on the releases page
+  and cannot be corrected in place.
+- **`src/test/releaseNotes.test.ts`** — 12 cases. The failure mode that matters is not a crash but a
+  body that quietly disagrees with the changelog, because it is immutable once published; so the
+  cases are the ways that happens — swallowing the *next* release's notes, ending the section at a
+  `## ` inside a fenced SQL block, and emitting a body for a version that has no section. One case
+  runs against the real `CHANGELOG.md`, because a fixture only proves the parser agrees with itself.
+
 ## [3.3.1] - 2026-10-26
 
 > **"Studio polish" — the theme the studio actually wanted, and dropdowns that load their values.**

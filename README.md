@@ -10,7 +10,7 @@ Official digital gallery, catalog raisonné, and studio management application f
 
 This full-stack application provides both an elegant, collector-grade public presentation and a powerful virtual studio inventory engine.
 
-> **Current release:** `v3.3.1` · **Single vendor:** Supabase (database + storage + auth). Cloudinary has been fully decommissioned.
+> **Current release:** `v3.3.2` · **Single vendor:** Supabase (database + storage + auth). Cloudinary has been fully decommissioned.
 > **Working in this repo (human or AI)?** Read [`AGENTS.md`](./AGENTS.md) first — it is the verified source of truth for the stack, schema, env vars, and write path. See [`plan/README.md`](./plan/README.md) for the status of every planning document.
 
 ---

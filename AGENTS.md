@@ -4,14 +4,17 @@
 > repo. Read this **first** — it supersedes the historical specs in `/plan`, which contain
 > stale assumptions from earlier Cloudinary-era work.
 >
-> **Verified against:** release `v3.3.1` (2026-10-26) — **"studio polish": light is the default
-> theme, the artwork editor's dropdowns load from the taxonomies table, and the admin sidebar is
-> grouped.** No schema change, no migration, no API change — still **18 migration files**. A saved
-> theme preference still wins over the new default; ⚠️ the default lives in **two** independent
-> readers of `rory_studio_theme` (`index.html`'s no-flash boot script and `ThemeContext`) and they
-> must change together. `ADMIN_NAV` is **still a flat array** — the sidebar groups are `group`
-> metadata plus `ADMIN_NAV_GROUPS`, because `src/test/adminNavGuard.test.ts` regex-parses it. Suite:
-> **916 tests / 57 files**. Prior: `v3.3.0` (2026-10-26) moved the database, storage and backup
+> **Verified against:** release `v3.3.2` (2026-10-27) — **"release objects": every release now also
+> publishes a GitHub Release whose body is extracted from `CHANGELOG.md`, not typed.** A **patch** and
+> a **process** one: no product change, no schema change, no migration, no API change — still **18
+> migration files**. New: `scripts/release-notes.ts` over the pure `scripts/lib/releaseNotes.ts`, and
+> `src/test/releaseNotes.test.ts`; nothing under `server/` or `src/` imports them, so the serverless
+> bundle is untouched. Suite: **58 test files**. Prior: `v3.3.1` (2026-10-26) **"studio polish"** made
+> light the default theme, fed the artwork editor's dropdowns from the taxonomies table, and grouped
+> the admin sidebar — ⚠️ the theme default lives in **two** independent readers of `rory_studio_theme`
+> (`index.html`'s no-flash boot script and `ThemeContext`) and they must change together, and
+> `ADMIN_NAV` is **still a flat array** because `src/test/adminNavGuard.test.ts` regex-parses it.
+> Prior: `v3.3.0` (2026-10-26) moved the database, storage and backup
 > store to Rory's own Supabase project (`orphcusijzkxpxkzapjp` → **`vmcnomurydkznkvtlucv`**; 41 of
 > 47 tables byte-identical, storage 1,109 objects / 102,627,424 B, Blob 180 objects / 12,359,620 B),
 > regenerated `src/data/assetRegistry.ts` (**3,007 URLs, 1,002 keys / 319 rows / 61 covers, VIO
@@ -25,9 +28,10 @@
 > once before; it is part of the release checklist — see §9.
 >
 > **Version map:** `v3.1.0` Capture · `v3.2.0` Group · `v3.2.1` navbar · `v3.3.0` migration ·
-> **`v3.3.1` polish** · **`v3.4.0` *Close the loop* (next)** · `v3.5.0` Phase 5. ⚠️ `v3.3.1` is a
-> **patch** on purpose — it is not part of the `v3.1.0`–`v3.4.0` feedback & planning program, and
-> renumbering that program a third time to make room for a UI release would falsify two dated
+> **`v3.3.1` polish** · **`v3.3.2` release objects** · **`v3.4.0` *Close the loop* (next)** ·
+> `v3.5.0` Phase 5. ⚠️ `v3.3.1` and `v3.3.2` are **patches** on purpose — they are not part of the
+> `v3.1.0`–`v3.4.0` feedback & planning program, and renumbering that program a third time to make
+> room for a UI release would falsify two dated
 > roadmap documents. ⚠️ `plan/ROADMAP_V3*.md` still shows the pre-2026-10-26 mapping (`v3.3.0` =
 > Close, `v3.4.0` = Phase 5) in its historical passages; the current map is the one in
 > `plan/README.md` and here.
@@ -577,9 +581,10 @@ re-exports it; never re-declare a role list.
   cannot drift silently. The pre-palette gate needs **both** backgrounds
   (`html.palette-booting` light, `html.palette-booting.dark` dark) for the same reason.
 - **`tsc --noEmit` must stay clean** (`npm run lint`); `npm test` (vitest) is offline/zero-token.
-  The suite is **57 test files** under `src/` (counted 2026-10-26, after `v3.3.1` added
+  The suite is **58 test files** under `src/` (counted 2026-10-27; `v3.3.1` added
   `src/lib/taxonomyOptions.test.ts`, `src/components/admin/ArtworkEditDialog.options.test.tsx`,
-  `src/test/adminNavGroups.test.tsx` and `src/context/ThemeContext.test.tsx`). ⚠️ **The test *count*
+  `src/test/adminNavGroups.test.tsx` and `src/context/ThemeContext.test.tsx`, and `v3.3.2` added
+  `src/test/releaseNotes.test.ts`). ⚠️ **The test *count*
   is not recorded here on purpose** — it was quoted as "828 across 48 files" while the file count was
   already 52, i.e. the number rotted. Re-derive both after `npm ci`:
   `npx vitest run --reporter=dot 2>&1 | tail -5` and `find src -name '*.test.*' | wc -l`.
@@ -619,6 +624,17 @@ re-exports it; never re-declare a role list.
   `v2.11.0` (`5122812`) do. ⚠️ `v2.9.0` is the exception: it points at a pre-merge commit
   (`16df8d9`), so its tag predates the final CHANGELOG fix. Tags are immutable once pushed; do not
   move one to "fix" it.
+- **Every release also publishes a GitHub Release object — the convention as of `v3.3.2`.** Tags
+  alone were the habit until `v3.3.1`, which got the repo's first Release object as a one-off; it is a
+  step now, not a flourish:
+  `npx tsx scripts/release-notes.ts <version> --deploy-url <url> --commit <sha> --out /tmp/notes.md`
+  writes the body — the `CHANGELOG.md` section for that version **verbatim**, plus a line naming the
+  deployment — and `gh release create v<version> --title "v<version> — <name>" --notes-file
+  /tmp/notes.md` publishes it. Not a draft, not a prerelease. Verify with `gh release view v<version>`.
+  ⚠️ **Create it after the production deploy, not with the tag**, because the body names the URL that
+  deploy produced. Why a script rather than a copy-paste: the tag *and* the body are immutable, so a
+  body that disagrees with `CHANGELOG.md` stays wrong forever and nobody re-reads it — extracting it
+  turns that into a failing test (`src/test/releaseNotes.test.ts`).
 - **Do not delete a release branch unless asked.** Branches were pruned after `v2.9.0`/`v2.10.0`, but
   the user asked to **keep `release/v2.11.0`** (tip `467bd14`, fully merged). Check before pruning.
 - **Update `DEPLOYMENT_LOG.md`** for every release — it is one row per notable deployment and it
